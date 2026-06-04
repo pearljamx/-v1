@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}DriveGuard — 驾驶注意力智能检测平台{% endblock %}</title>
+
+    <!-- Google Fonts preconnect + Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+
+    <!-- chartjs-plugin-annotation -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.1.0/dist/chartjs-plugin-annotation.min.js"></script>
+
+    <!-- 自定义样式 -->
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar-glass">
+        <a class="nav-brand" href="/">
+            <span class="brand-icon">
+                <i class="bi bi-car-front-fill" style="color:#fff;"></i>
+            </span>
+            <span class="brand-text">DriveGuard</span>
+        </a>
+        <ul class="nav-links">
+            <li>
+                <a class="nav-link-item active" href="/">
+                    <i class="bi bi-house-door"></i> 首页
+                </a>
+            </li>
+            <li>
+                <a class="nav-link-item" href="/camera">
+                    <i class="bi bi-camera-video-fill"></i> 实时检测
+                </a>
+            </li>
+        </ul>
+        <a class="nav-cta" href="/camera">
+            <i class="bi bi-play-circle"></i> 开始检测
+        </a>
+    </nav>
+
+    <!-- 主要内容区域 -->
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="footer-glass">
+        <div style="max-width:1200px; margin:0 auto; display:grid; grid-template-columns:2fr 1fr 1fr; gap:40px;">
+            <!-- 品牌列 -->
+            <div>
+                <div class="footer-brand">DriveGuard</div>
+                <p class="footer-desc">
+                    基于前沿计算机视觉技术，实时监测驾驶员注意力状态，智能识别疲劳与分心行为，为每一次出行保驾护航。
+                </p>
+            </div>
+            <!-- 功能列 -->
+            <div>
+                <div class="footer-heading">核心功能</div>
+                <a class="footer-link" href="#">疲劳检测</a>
+                <a class="footer-link" href="#">分心检测</a>
+                <a class="footer-link" href="#">生理信号分析</a>
+            </div>
+            <!-- 资源列 -->
+            <div>
+                <div class="footer-heading">资源</div>
+                <a class="footer-link" href="#">YOLOv8 模型信息</a>
+                <a class="footer-link" href="https://github.com" target="_blank" rel="noopener">GitHub</a>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            &copy; 2026 DriveGuard. Powered by YOLOv8 &amp; MediaPipe.
+        </div>
+    </footer>
+
+    <!-- 自定义JavaScript -->
+    <script src="{{ url_for('static', filename='js/upload.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/chart.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/alert.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/result.js') }}"></script>
+
+    {% block extra_scripts %}{% endblock %}
+
+    <!-- Intersection Observer: 滚动入场动画 -->
+    <script>
+    (function() {
+        var observer = new IntersectionObserver(function(entries) {
+            entries.forEach(function(entry) {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('revealed');
+                }
+            });
+        }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
+
+        document.querySelectorAll('.reveal, .reveal-stagger').forEach(function(el) {
+            observer.observe(el);
+        });
+    })();
+    </script>
+</body>
+</html>

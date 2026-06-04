@@ -1,0 +1,32 @@
+# 驾驶注意力检测系统 - Python依赖
+# =========================================
+
+# Web框架
+Flask>=3.0.0
+Flask-Cors>=4.0.0
+Werkzeug>=3.0.0
+
+# 计算机视觉
+opencv-python>=4.8.0
+mediapipe>=0.10.0
+numpy>=1.24.0
+scipy>=1.10.0
+Pillow>=10.0.0
+
+# 深度学习 & YOLO
+ultralytics>=8.0.0
+torch>=2.0.0
+torchvision>=0.15.0
+
+# 信号处理 (rPPG)
+scikit-learn>=1.3.0
+
+# 人脸检测与识别 (dlib备选后端)
+# dlib-bin 提供Windows预编译wheel，避免CMake编译问题
+dlib-bin>=19.24.0
+face-recognition>=1.3.0
+face-recognition-models>=0.3.0
+
+# 外部公开数据集下载/导入
+roboflow>=1.1.0
+PyYAML>=6.0.0

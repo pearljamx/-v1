@@ -1,0 +1,607 @@
+{% extends "base.html" %}
+{% block title %}驾驶注意力检测系统 - 首页{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* ============================================================
+     Layout Grid (replacing Bootstrap)
+     ============================================================ */
+  .container-xl {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+  .grid-sidebar {
+    display: grid;
+    grid-template-columns: 1fr 1.8fr;
+    gap: 24px;
+    align-items: start;
+  }
+  .grid-4 {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 24px;
+  }
+  .grid-2-inner {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  .grid-3-inner {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+  @media (max-width: 991px) {
+    .grid-sidebar { grid-template-columns: 1fr; }
+    .grid-4 { grid-template-columns: repeat(2, 1fr); }
+    .grid-2-inner { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 640px) {
+    .grid-4 { grid-template-columns: 1fr; }
+    .grid-3-inner { grid-template-columns: 1fr; }
+    .container-xl { padding: 0 16px; }
+  }
+
+  /* Utility overrides */
+  .d-none { display: none !important; }
+  .d-flex { display: flex; }
+  .align-center { align-items: center; }
+  .justify-between { justify-content: space-between; }
+  .gap-2 { gap: 8px; }
+  .gap-3 { gap: 16px; }
+  .gap-4 { gap: 24px; }
+  .text-center { text-align: center; }
+  .w-full { width: 100%; }
+  .mt-2 { margin-top: 12px; }
+  .mt-3 { margin-top: 24px; }
+  .mt-4 { margin-top: 32px; }
+  .mt-5 { margin-top: 48px; }
+  .mb-2 { margin-bottom: 12px; }
+  .mb-3 { margin-bottom: 24px; }
+  .mb-4 { margin-bottom: 32px; }
+  .flex-wrap { flex-wrap: wrap; }
+
+  /* Hero rotating text transition */
+  .hero-rotating-text .rotating-phrase {
+    transition: opacity 0.4s ease;
+  }
+
+  /* Tab pane hidden state */
+  .tab-pane { display: none; }
+  .tab-pane.active { display: block; animation: fadeIn 0.35s ease; }
+
+  /* File info card hidden */
+  .file-info-card.d-none { display: none; }
+
+  /* Progress container hidden */
+  .progress-custom.d-none { display: none; }
+
+  /* Stat card inner colors (overridable by data attr context) */
+  .stat-value.score-green { color: var(--success); }
+  .stat-value.score-yellow { color: var(--warning); }
+  .stat-value.score-red { color: var(--danger); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-xl">
+
+  <!-- ============================================================
+       Status Bar
+       ============================================================ -->
+  <div class="alert-custom alert-info mb-3" id="overall-status" role="alert">
+    <i class="bi bi-info-circle-fill" style="font-size: 1.2rem;"></i>
+    <span id="status-text" style="flex:1;">系统就绪 — 请上传图像或视频文件开始检测</span>
+    <div id="active-alert-badges" class="d-flex gap-2"></div>
+  </div>
+
+  <!-- ============================================================
+       1. Hero Section
+       ============================================================ -->
+  <section class="hero-section reveal">
+    <div class="hero-blob hero-blob-1"></div>
+    <div class="hero-blob hero-blob-2"></div>
+
+    <div class="hero-badge">
+      <span class="dot"></span>
+      AI-Powered 实时监测
+    </div>
+
+    <h1 class="hero-title">
+      驾驶<span class="text-gradient">注意力</span>智能检测平台
+    </h1>
+
+    <p class="hero-subtitle">
+      基于深度学习与计算机视觉技术，实时分析驾驶员状态，
+      精准识别疲劳、分心及生理异常，为安全驾驶保驾护航。
+    </p>
+
+    <div class="hero-actions">
+      <a href="#upload-section" class="btn btn-primary btn-lg">
+        <i class="bi bi-play-circle-fill"></i> 开始检测
+      </a>
+      <a href="/camera" class="btn btn-outline btn-lg">
+        <i class="bi bi-camera-video-fill"></i> 实时摄像头
+      </a>
+    </div>
+
+    <div class="hero-rotating-text" id="hero-rotating">
+      <span class="highlight rotating-phrase">正在检测面部关键点...</span>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       2. Feature Cards
+       ============================================================ -->
+  <section class="section-padding reveal" id="features">
+    <h2 class="section-title text-center mb-3">核心检测能力</h2>
+    <p class="section-subtitle text-center mb-4" style="max-width: 640px; margin-left: auto; margin-right: auto;">
+      五大检测模块协同工作，全方位守护驾驶安全
+    </p>
+
+    <div class="grid-4 reveal-stagger">
+      <!-- Feature 1: Face Detection -->
+      <div class="feature-card">
+        <div class="feature-icon purple">
+          <i class="bi bi-eye"></i>
+        </div>
+        <h4>面部检测</h4>
+        <p>468点面部特征精准定位，毫秒级人脸追踪，支持多角度与部分遮挡场景</p>
+      </div>
+
+      <!-- Feature 2: Fatigue Analysis -->
+      <div class="feature-card">
+        <div class="feature-icon teal">
+          <i class="bi bi-activity"></i>
+        </div>
+        <h4>疲劳分析</h4>
+        <p>EAR/MAR算法实时监测闭眼与哈欠，智能判定疲劳等级并提前预警</p>
+      </div>
+
+      <!-- Feature 3: Distraction Detection -->
+      <div class="feature-card">
+        <div class="feature-icon amber">
+          <i class="bi bi-phone"></i>
+        </div>
+        <h4>分心检测</h4>
+        <p>YOLOv8检测手机使用、吸烟和饮水行为，结合头部姿态评估注意力偏移</p>
+      </div>
+
+      <!-- Feature 4: Physiological Signal -->
+      <div class="feature-card">
+        <div class="feature-icon rose">
+          <i class="bi bi-heart-pulse"></i>
+        </div>
+        <h4>生理信号</h4>
+        <p>rPPG非接触式心率监测，从面部微小色变中提取心率与HRV指标</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       3. Upload & Detection Area
+       ============================================================ -->
+  <section class="section-padding reveal" id="upload-section">
+    <div class="grid-sidebar">
+      <!-- ============ 左列：上传控制面板 ============ -->
+      <div class="card-dark">
+        <div class="card-header">
+          <i class="bi bi-cloud-upload" style="margin-right: 8px;"></i>
+          上传文件检测
+        </div>
+        <div class="card-body">
+          <!-- 拖拽上传区 -->
+          <div id="drop-zone" class="drop-zone mb-3">
+            <i class="bi bi-cloud-arrow-up drop-icon"></i>
+            <p class="drop-text">拖拽文件到此处</p>
+            <p class="drop-hint">或点击下方按钮选择文件</p>
+            <input type="file" id="file-input" class="d-none" accept="image/*,video/*">
+            <button type="button" class="btn btn-outline btn-sm mt-2"
+                    onclick="document.getElementById('file-input').click()">
+              <i class="bi bi-folder2-open"></i> 选择文件
+            </button>
+          </div>
+
+          <!-- 已选文件信息 -->
+          <div id="file-info" class="file-info-card d-none mb-3">
+            <i class="bi bi-file-earmark" style="font-size: 1.5rem; color: var(--brand);"></i>
+            <div style="flex:1; min-width:0;">
+              <span id="file-name" style="display:block; font-size:14px; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></span>
+              <span id="file-size" style="font-size:12px; color:var(--text-muted);"></span>
+            </div>
+            <button type="button" class="btn btn-ghost btn-sm" onclick="clearFile()" style="color:var(--danger);">
+              <i class="bi bi-x-lg"></i>
+            </button>
+          </div>
+
+          <!-- 检测模式选择 -->
+          <div class="mb-3">
+            <label style="display:block; font-size:13px; font-weight:500; color:var(--text-muted); margin-bottom:6px; text-transform:uppercase; letter-spacing:0.04em;">
+              检测模式
+            </label>
+            <select id="detect-mode" class="form-select-custom w-full">
+              <option value="auto">自动检测（根据文件类型）</option>
+              <option value="image">图像模式</option>
+              <option value="video">视频模式</option>
+            </select>
+          </div>
+
+          <!-- 检测模块开关 -->
+          <div class="mb-3">
+            <label style="display:block; font-size:13px; font-weight:500; color:var(--text-muted); margin-bottom:8px; text-transform:uppercase; letter-spacing:0.04em;">
+              检测模块
+            </label>
+            <label class="toggle-switch">
+              <span class="toggle-label">疲劳检测 (闭眼/哈欠/眨眼)</span>
+              <input type="checkbox" id="enable-fatigue" checked>
+            </label>
+            <label class="toggle-switch">
+              <span class="toggle-label">头部姿态分析</span>
+              <input type="checkbox" id="enable-pose" checked>
+            </label>
+            <label class="toggle-switch">
+              <span class="toggle-label">视线方向检测</span>
+              <input type="checkbox" id="enable-gaze" checked>
+            </label>
+            <label class="toggle-switch">
+              <span class="toggle-label">分心行为检测</span>
+              <input type="checkbox" id="enable-distraction" checked>
+            </label>
+            <label class="toggle-switch">
+              <span class="toggle-label">生理信号监测 (需较长视频)</span>
+              <input type="checkbox" id="enable-physio">
+            </label>
+          </div>
+
+          <!-- 开始检测按钮 -->
+          <button id="start-btn" class="btn btn-primary btn-lg btn-pulse w-full" disabled
+                  onclick="startDetection()">
+            <i class="bi bi-play-circle"></i> 开始检测
+          </button>
+
+          <!-- 进度条 -->
+          <div id="progress-container" class="d-none mt-3">
+            <div class="d-flex justify-between mb-2" style="font-size:13px;">
+              <span id="progress-label" style="color:var(--text-secondary);">处理中...</span>
+              <span id="progress-percent" style="color:var(--brand); font-weight:600;">0%</span>
+            </div>
+            <div class="progress-custom">
+              <div id="progress-bar" class="progress-fill" style="width: 0%;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ 右列：检测结果面板 ============ -->
+      <div class="card-dark">
+        <div class="card-header" style="padding: 0 24px;">
+          <!-- Tab导航 -->
+          <div class="tabs-underline" id="result-tabs" role="tablist" style="border-bottom: none; margin-bottom: 0;">
+            <button class="tab-btn active" data-tab="preview" type="button">
+              <i class="bi bi-camera-video"></i> 预览
+            </button>
+            <button class="tab-btn" data-tab="fatigue" type="button">
+              <i class="bi bi-eye"></i> 疲劳
+            </button>
+            <button class="tab-btn" data-tab="distraction" type="button">
+              <i class="bi bi-exclamation-triangle"></i> 分心
+            </button>
+            <button class="tab-btn" data-tab="physio" type="button">
+              <i class="bi bi-heart-pulse"></i> 生理
+            </button>
+            <button class="tab-btn" data-tab="alerts" type="button">
+              <i class="bi bi-bell"></i> 告警
+              <span id="alert-count-badge" class="alert-badge danger d-none" style="margin-left:6px;">0</span>
+            </button>
+          </div>
+        </div>
+        <div class="card-body" id="tab-content-area">
+
+          <!-- ===== Tab: 预览 ===== -->
+          <div class="tab-pane active" id="tab-preview">
+            <div id="preview-placeholder" class="preview-area">
+              <div class="preview-placeholder">
+                <i class="bi bi-image ph-icon"></i>
+                <p style="color:var(--text-muted);">上传文件并开始检测后，此处将显示处理结果</p>
+              </div>
+            </div>
+            <div id="preview-content" class="d-none preview-area" style="background:transparent;">
+              <img id="preview-image" style="max-width:100%; max-height:500px; object-fit:contain; border-radius:var(--radius-md);" alt="检测预览">
+              <video id="preview-video" class="d-none" style="max-width:100%; max-height:500px; object-fit:contain; border-radius:var(--radius-md);" controls></video>
+            </div>
+          </div>
+
+          <!-- ===== Tab: 疲劳分析 ===== -->
+          <div class="tab-pane" id="tab-fatigue">
+            <div class="grid-2-inner mb-3">
+              <div class="card-dark bg-card" style="padding:16px;">
+                <h6 style="color:var(--text-muted); font-size:13px; margin-bottom:12px; font-weight:500; letter-spacing:0.04em; text-transform:uppercase;">EAR 时序图</h6>
+                <canvas id="ear-chart" height="200"></canvas>
+              </div>
+              <div class="card-dark bg-card" style="padding:16px;">
+                <h6 style="color:var(--text-muted); font-size:13px; margin-bottom:12px; font-weight:500; letter-spacing:0.04em; text-transform:uppercase;">MAR 时序图</h6>
+                <canvas id="mar-chart" height="200"></canvas>
+              </div>
+            </div>
+            <div class="grid-3-inner">
+              <div class="stat-card">
+                <div class="stat-label">眨眼频率</div>
+                <div class="stat-value" id="blink-rate-value">--</div>
+                <small style="color:var(--text-muted);">次/分钟</small>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">闭眼事件</div>
+                <div class="stat-value" id="eye-closure-count">0</div>
+                <small style="color:var(--text-muted);">次</small>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">哈欠次数</div>
+                <div class="stat-value" id="yawn-count">0</div>
+                <small style="color:var(--text-muted);">次</small>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== Tab: 分心分析 ===== -->
+          <div class="tab-pane" id="tab-distraction">
+            <div class="grid-2-inner mb-3">
+              <div class="card-dark bg-card" style="padding:16px;">
+                <h6 style="color:var(--text-muted); font-size:13px; margin-bottom:12px; font-weight:500; letter-spacing:0.04em; text-transform:uppercase;">头部姿态变化</h6>
+                <canvas id="head-pose-chart" height="200"></canvas>
+              </div>
+              <div class="card-dark bg-card" style="padding:16px;">
+                <h6 style="color:var(--text-muted); font-size:13px; margin-bottom:12px; font-weight:500; letter-spacing:0.04em; text-transform:uppercase;">检测到的物体</h6>
+                <div id="detected-objects" class="d-flex flex-wrap gap-2" style="min-height:40px; align-items:center;">
+                  <span style="color:var(--text-muted); font-size:14px;">暂无检测结果</span>
+                </div>
+              </div>
+            </div>
+            <div class="grid-3-inner">
+              <div class="stat-card">
+                <div class="stat-label">视线偏离</div>
+                <div class="stat-value" id="gaze-deviation-count">0</div>
+                <small style="color:var(--text-muted);">次</small>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">手离方向盘</div>
+                <div class="stat-value" id="hands-off-count">0</div>
+                <small style="color:var(--text-muted);">次</small>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">转身取物</div>
+                <div class="stat-value" id="body-turn-count">0</div>
+                <small style="color:var(--text-muted);">次</small>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== Tab: 生理信号 ===== -->
+          <div class="tab-pane" id="tab-physio">
+            <div class="grid-2-inner mb-3">
+              <div class="stat-card stat-danger">
+                <div class="stat-label"><i class="bi bi-heart-fill" style="color:var(--danger); margin-right:4px;"></i>心率</div>
+                <div class="stat-value" id="heart-rate-value">--</div>
+                <small style="color:var(--text-muted);">BPM</small>
+              </div>
+              <div class="stat-card stat-brand">
+                <div class="stat-label">心率变异性 (HRV)</div>
+                <div class="stat-value" id="hrv-value">--</div>
+                <small style="color:var(--text-muted);">ms</small>
+              </div>
+            </div>
+            <div class="mb-3">
+              <div class="card-dark bg-card" style="padding:16px;">
+                <h6 style="color:var(--text-muted); font-size:13px; margin-bottom:12px; font-weight:500; letter-spacing:0.04em; text-transform:uppercase;">PPG 波形</h6>
+                <canvas id="ppg-chart" height="200"></canvas>
+              </div>
+            </div>
+            <div class="grid-2-inner">
+              <div class="stat-card">
+                <div class="stat-label">收缩压趋势</div>
+                <div class="stat-value" id="bp-systolic-value" style="font-size:2rem;">--</div>
+                <small style="color:var(--text-muted);">mmHg</small>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">舒张压趋势</div>
+                <div class="stat-value" id="bp-diastolic-value" style="font-size:2rem;">--</div>
+                <small style="color:var(--text-muted);">mmHg</small>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== Tab: 告警日志 ===== -->
+          <div class="tab-pane" id="tab-alerts">
+            <div style="overflow-x:auto;">
+              <table class="table-dark-custom" id="alerts-table">
+                <thead>
+                  <tr>
+                    <th>时间</th>
+                    <th>类型</th>
+                    <th>严重性</th>
+                    <th>描述</th>
+                  </tr>
+                </thead>
+                <tbody id="alerts-tbody">
+                  <tr>
+                    <td colspan="4" style="text-align:center; color:var(--text-muted); padding:40px 16px;">
+                      <i class="bi bi-bell-slash" style="display:block; font-size:2rem; margin-bottom:8px; opacity:0.4;"></i>
+                      暂无告警记录
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div><!-- /card-body -->
+      </div><!-- /card-dark right -->
+    </div><!-- /grid-sidebar -->
+  </section>
+
+  <!-- ============================================================
+       4. Bottom Summary Stats
+       ============================================================ -->
+  <div class="section-padding reveal reveal-stagger" id="summary-cards" style="padding-top:0;">
+    <div class="grid-4">
+      <div class="stat-card stat-brand">
+        <div class="stat-label">疲劳评分</div>
+        <div class="stat-value" id="fatigue-score">--</div>
+        <small style="color:var(--text-muted);">/ 100</small>
+      </div>
+      <div class="stat-card stat-warning">
+        <div class="stat-label">分心评分</div>
+        <div class="stat-value" id="distraction-score">--</div>
+        <small style="color:var(--text-muted);">/ 100</small>
+      </div>
+      <div class="stat-card stat-danger">
+        <div class="stat-label">心率</div>
+        <div class="stat-value" id="hr-card-value">--</div>
+        <small style="color:var(--text-muted);">BPM</small>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">告警次数</div>
+        <div class="stat-value" id="alert-total">0</div>
+        <small style="color:var(--text-muted);">次</small>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /container-xl -->
+{% endblock %}
+
+{% block extra_scripts %}
+<!-- ============================================================
+     Inline UI Scripts: Tab switching, drag-drop, hero rotation
+     (base.html already loads all external JS + IntersectionObserver)
+     ============================================================ -->
+<script>
+(function() {
+  'use strict';
+
+  // ==================== Hero 轮播文字 ====================
+  const rotatingPhrases = [
+    '正在检测面部关键点...',
+    '实时分析眼部纵横比...',
+    '评估驾驶员注意力状态...',
+    '监测头部姿态与视线方向...',
+    '非接触式心率信号提取中...'
+  ];
+  const heroRotating = document.getElementById('hero-rotating');
+  const phraseEl = heroRotating ? heroRotating.querySelector('.rotating-phrase') : null;
+  if (phraseEl && rotatingPhrases.length > 0) {
+    let phraseIdx = 0;
+    setInterval(function() {
+      phraseIdx = (phraseIdx + 1) % rotatingPhrases.length;
+      phraseEl.style.opacity = '0';
+      setTimeout(function() {
+        phraseEl.textContent = rotatingPhrases[phraseIdx];
+        phraseEl.style.opacity = '1';
+      }, 400);
+    }, 3000);
+  }
+
+  // ==================== Tab 切换 ====================
+  var tabBtns = document.querySelectorAll('#result-tabs .tab-btn');
+  tabBtns.forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.preventDefault();
+      var tabId = this.getAttribute('data-tab');
+
+      // Deactivate all
+      document.querySelectorAll('#result-tabs .tab-btn').forEach(function(b) { b.classList.remove('active'); });
+      document.querySelectorAll('#tab-content-area .tab-pane').forEach(function(p) { p.classList.remove('active'); });
+
+      // Activate target
+      this.classList.add('active');
+      var targetPane = document.getElementById('tab-' + tabId);
+      if (targetPane) targetPane.classList.add('active');
+    });
+  });
+
+  // ==================== 拖拽上传 ====================
+  var dropZone = document.getElementById('drop-zone');
+  var fileInput = document.getElementById('file-input');
+  var fileInfo = document.getElementById('file-info');
+  var fileNameEl = document.getElementById('file-name');
+  var fileSizeEl = document.getElementById('file-size');
+  var startBtn = document.getElementById('start-btn');
+
+  function formatFileSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / 1048576).toFixed(1) + ' MB';
+  }
+
+  function showFileInfo(file) {
+    fileInfo.classList.remove('d-none');
+    fileNameEl.textContent = file.name;
+    fileSizeEl.textContent = formatFileSize(file.size);
+    startBtn.disabled = false;
+  }
+
+  if (dropZone && fileInput) {
+    // Click to select
+    dropZone.addEventListener('click', function(e) {
+      if (e.target.tagName !== 'BUTTON') {
+        fileInput.click();
+      }
+    });
+
+    // File selected via input
+    fileInput.addEventListener('change', function() {
+      if (this.files && this.files.length > 0) {
+        showFileInfo(this.files[0]);
+      }
+    });
+
+    // Drag events
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(function(evtName) {
+      dropZone.addEventListener(evtName, function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+      });
+    });
+
+    ['dragenter', 'dragover'].forEach(function(evtName) {
+      dropZone.addEventListener(evtName, function() {
+        dropZone.classList.add('drag-over');
+      });
+    });
+
+    ['dragleave', 'drop'].forEach(function(evtName) {
+      dropZone.addEventListener(evtName, function() {
+        dropZone.classList.remove('drag-over');
+      });
+    });
+
+    dropZone.addEventListener('drop', function(e) {
+      var files = e.dataTransfer.files;
+      if (files && files.length > 0) {
+        fileInput.files = files;
+        showFileInfo(files[0]);
+      }
+    });
+  }
+
+  // 清除文件 (挂载到全局)
+  window.clearFile = function() {
+    if (fileInput) fileInput.value = '';
+    if (fileInfo) fileInfo.classList.add('d-none');
+    if (startBtn) startBtn.disabled = true;
+  };
+
+  // ==================== Hero CTA 平滑滚动到上传区 ====================
+  var heroCta = document.querySelector('.hero-actions .btn-primary[href="#upload-section"]');
+  if (heroCta) {
+    heroCta.addEventListener('click', function(e) {
+      e.preventDefault();
+      var target = document.getElementById('upload-section');
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  }
+})();
+</script>
+{% endblock %}

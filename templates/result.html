@@ -1,0 +1,550 @@
+{% extends "base.html" %}
+{% block title %}检测结果 - 驾驶注意力检测系统{% endblock %}
+
+{% block content %}
+<style>
+/* ========== 颜色变量 ========== */
+:root {
+    --bg-primary: #0d1117;
+    --bg-card: #161b22;
+    --bg-card-header: #0d1117;
+    --bg-subcard: #010409;
+    --border-color: #30363d;
+    --text-primary: #e6edf3;
+    --text-secondary: #8b949e;
+    --text-muted: #6e7681;
+    --score-good: #00D4AA;
+    --score-warning: #FFB547;
+    --score-danger: #FF4560;
+    --accent-blue: #58a6ff;
+    --radius: 8px;
+    --radius-sm: 6px;
+    --transition: 0.2s ease;
+}
+
+/* ========== 全局重置 ========== */
+.result-page {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px 20px 40px;
+    color: var(--text-primary);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+}
+
+.result-page *,
+.result-page *::before,
+.result-page *::after {
+    box-sizing: border-box;
+}
+
+/* ========== 面包屑导航 ========== */
+.breadcrumb-nav {
+    margin-bottom: 20px;
+    font-size: 14px;
+}
+.breadcrumb-nav a {
+    color: var(--accent-blue);
+    text-decoration: none;
+}
+.breadcrumb-nav a:hover {
+    text-decoration: underline;
+}
+.breadcrumb-nav .separator {
+    color: var(--text-muted);
+    margin: 0 6px;
+}
+.breadcrumb-nav .current {
+    color: var(--text-secondary);
+}
+
+/* ========== 页面标题 ========== */
+.page-header {
+    margin-bottom: 28px;
+}
+.page-header h2 {
+    margin: 0 0 6px;
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+.page-header .task-id-line {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+.text-mono {
+    font-family: "Cascadia Code", "Fira Code", "JetBrains Mono", Consolas, monospace;
+    background: var(--bg-subcard);
+    padding: 2px 8px;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    color: var(--accent-blue);
+    font-size: 13px;
+}
+
+/* ========== Card 基础样式 ========== */
+.card-dark {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    overflow: hidden;
+}
+.card-dark .card-header {
+    background: var(--bg-card-header);
+    border-bottom: 1px solid var(--border-color);
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+.card-dark .card-header h5 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+.card-dark .card-body {
+    padding: 18px;
+}
+
+/* ========== 风险评分 Hero ========== */
+.risk-hero {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+}
+@media (max-width: 768px) {
+    .risk-hero {
+        grid-template-columns: 1fr;
+    }
+}
+.risk-hero .card-dark .card-body {
+    text-align: center;
+    padding: 24px 18px;
+}
+.risk-hero .stat-label {
+    display: block;
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.risk-hero .stat-value {
+    display: block;
+    font-size: 48px;
+    font-weight: 800;
+    line-height: 1.1;
+}
+.risk-hero .stat-unit {
+    display: block;
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-top: 6px;
+}
+
+/* Risk 颜色 */
+.risk-level-good {
+    color: var(--score-good);
+}
+.risk-level-warning {
+    color: var(--score-warning);
+}
+.risk-level-danger {
+    color: var(--score-danger);
+}
+
+/* ========== 分数颜色类 ========== */
+.score-good { color: var(--score-good); }
+.score-warning { color: var(--score-warning); }
+.score-danger { color: var(--score-danger); }
+
+/* ========== 两列布局 ========== */
+.detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+@media (max-width: 768px) {
+    .detail-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ========== 子卡片 (数据格子) ========== */
+.sub-card-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 16px;
+}
+.sub-card {
+    background: var(--bg-subcard);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    text-align: center;
+}
+.sub-card .sub-label {
+    display: block;
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+}
+.sub-card .sub-value {
+    display: block;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+/* 分心详情中的检测物体标签 */
+.tag-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 4px;
+}
+.tag-list .tag-item {
+    display: inline-block;
+    background: var(--bg-subcard);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 3px 12px;
+    font-size: 12px;
+    color: var(--accent-blue);
+}
+.tag-list .tag-empty {
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+/* ========== 分隔线 ========== */
+.section-divider {
+    border: none;
+    border-top: 1px solid var(--border-color);
+    margin: 16px 0;
+}
+
+/* ========== 生理信号区 ========== */
+.physio-section {
+    margin-bottom: 24px;
+}
+.physio-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+}
+@media (max-width: 768px) {
+    .physio-grid {
+        grid-template-columns: 1fr;
+    }
+}
+.stat-card {
+    background: var(--bg-subcard);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 18px 14px;
+    text-align: center;
+}
+.stat-card .stat-label {
+    display: block;
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+.stat-card .stat-value {
+    display: block;
+    font-size: 36px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+.stat-card .stat-unit {
+    display: block;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+.stat-danger .stat-value {
+    color: var(--score-danger);
+}
+
+/* ========== 告警表格 ========== */
+.alert-section {
+    margin-bottom: 24px;
+}
+.badge-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    height: 24px;
+    background: var(--score-danger);
+    color: #fff;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 0 8px;
+}
+
+.table-dark-custom {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+.table-dark-custom thead th {
+    background: var(--bg-subcard);
+    color: var(--text-secondary);
+    font-weight: 600;
+    text-align: left;
+    padding: 10px 14px;
+    border-bottom: 2px solid var(--border-color);
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+.table-dark-custom tbody td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-primary);
+    vertical-align: middle;
+}
+.table-dark-custom tbody tr:hover {
+    background: rgba(255,255,255,0.03);
+}
+.table-dark-custom tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* 严重性圆点 */
+.severity-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 6px;
+    vertical-align: middle;
+}
+.severity-dot.low {
+    background: var(--score-good);
+}
+.severity-dot.medium {
+    background: var(--score-warning);
+}
+.severity-dot.high {
+    background: var(--score-danger);
+}
+
+/* 加载/空状态 */
+.loading-text {
+    color: var(--text-muted);
+    text-align: center;
+    padding: 20px 0;
+    font-size: 14px;
+}
+
+/* ========== 按钮 (保留备用) ========== */
+.btn-outline {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    background: transparent;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-size: 13px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background var(--transition), border-color var(--transition);
+}
+.btn-outline:hover {
+    background: var(--bg-card);
+    border-color: var(--text-muted);
+}
+</style>
+
+<div class="result-page">
+
+    <!-- 面包屑导航 -->
+    <nav class="breadcrumb-nav">
+        <a href="/">首页</a>
+        <span class="separator">&gt;</span>
+        <span class="current">检测结果</span>
+    </nav>
+
+    <!-- 页面标题 -->
+    <div class="page-header">
+        <h2>检测报告</h2>
+        <div class="task-id-line">
+            任务ID: <span class="text-mono" id="task-id-display">{{ task_id }}</span>
+            <span style="margin-left: 16px;">
+                <button class="btn-outline" id="btn-export-report" title="导出PDF/HTML报告">
+                    导出报告
+                </button>
+            </span>
+        </div>
+    </div>
+
+    <!-- 风险评分 Hero -->
+    <div class="risk-hero">
+        <div class="card-dark">
+            <div class="card-body">
+                <span class="stat-label">综合风险等级</span>
+                <span class="stat-value" id="overall-risk">--</span>
+            </div>
+        </div>
+        <div class="card-dark">
+            <div class="card-body">
+                <span class="stat-label">疲劳评分</span>
+                <span class="stat-value" id="r-fatigue-score">--</span>
+                <span class="stat-unit">/ 100 (越低越疲劳)</span>
+            </div>
+        </div>
+        <div class="card-dark">
+            <div class="card-body">
+                <span class="stat-label">分心评分</span>
+                <span class="stat-value" id="r-distraction-score">--</span>
+                <span class="stat-unit">/ 100 (越低越分心)</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 详细检测结果：两列 -->
+    <div class="detail-grid">
+
+        <!-- 左列：疲劳检测详情 -->
+        <div class="card-dark">
+            <div class="card-header">
+                <h5>疲劳检测详情</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="ear-mar-chart" height="250"></canvas>
+                <hr class="section-divider">
+                <div class="sub-card-grid">
+                    <div class="sub-card">
+                        <span class="sub-label">平均EAR</span>
+                        <span class="sub-value" id="avg-ear">--</span>
+                    </div>
+                    <div class="sub-card">
+                        <span class="sub-label">最低EAR</span>
+                        <span class="sub-value" id="min-ear">--</span>
+                    </div>
+                    <div class="sub-card">
+                        <span class="sub-label">眨眼频率</span>
+                        <span class="sub-value" id="r-blink-rate">--</span>
+                    </div>
+                    <div class="sub-card">
+                        <span class="sub-label">点头次数</span>
+                        <span class="sub-value" id="r-nodding-count">--</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右列：分心检测详情 -->
+        <div class="card-dark">
+            <div class="card-header">
+                <h5>分心检测详情</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="head-pose-line-chart" height="250"></canvas>
+                <hr class="section-divider">
+                <div class="sub-card-grid">
+                    <div class="sub-card">
+                        <span class="sub-label">检测物体</span>
+                        <div id="r-objects" class="tag-list">
+                            <span class="tag-empty">--</span>
+                        </div>
+                    </div>
+                    <div class="sub-card">
+                        <span class="sub-label">视线偏离次数</span>
+                        <span class="sub-value" id="r-gaze-dev">--</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- 生理信号区（默认隐藏） -->
+    <div class="physio-section" id="physio-section" style="display:none;">
+        <div class="card-dark">
+            <div class="card-header">
+                <h5>生理信号监测</h5>
+            </div>
+            <div class="card-body">
+                <div class="physio-grid">
+                    <div class="stat-card stat-danger">
+                        <span class="stat-label">心率</span>
+                        <span class="stat-value" id="r-heart-rate">--</span>
+                        <span class="stat-unit">BPM</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">收缩压趋势</span>
+                        <span class="stat-value" id="r-bp-sys">--</span>
+                        <span class="stat-unit">mmHg</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">舒张压趋势</span>
+                        <span class="stat-value" id="r-bp-dia">--</span>
+                        <span class="stat-unit">mmHg</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 告警表格 -->
+    <div class="alert-section">
+        <div class="card-dark">
+            <div class="card-header">
+                <h5>告警记录</h5>
+                <span class="badge-count" id="result-alert-total">0</span>
+            </div>
+            <div class="card-body" style="padding: 0;">
+                <div style="overflow-x: auto;">
+                    <table class="table-dark-custom">
+                        <thead>
+                            <tr>
+                                <th>时间</th>
+                                <th>来源</th>
+                                <th>类型</th>
+                                <th>严重性</th>
+                                <th>描述</th>
+                            </tr>
+                        </thead>
+                        <tbody id="result-alerts-tbody">
+                            <tr><td colspan="5" class="loading-text">加载中...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/chart.js') }}"></script>
+<script src="{{ url_for('static', filename='js/result.js') }}"></script>
+<script>
+    // 页面加载时获取结果
+    var taskIdEl = document.getElementById('task-id-display');
+    var taskId = taskIdEl ? taskIdEl.textContent.trim() : '';
+    if (taskId && taskId !== 'None') {
+        loadResults(taskId);
+    }
+
+    // 导出报告按钮
+    var btnExport = document.getElementById('btn-export-report');
+    if (btnExport && taskId && taskId !== 'None') {
+        btnExport.addEventListener('click', function() {
+            window.open('/api/report/' + encodeURIComponent(taskId), '_blank');
+        });
+    }
+</script>
+{% endblock %}

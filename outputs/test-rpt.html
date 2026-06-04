@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>DriveGuard 检测报告 - rpt</title>
+<style>
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans",
+                 "Microsoft YaHei", "PingFang SC", sans-serif;
+    color: #1a1a2e;
+    background: #fff;
+    line-height: 1.6;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px;
+}
+.header {
+    text-align: center;
+    border-bottom: 3px solid #1a73e8;
+    padding-bottom: 20px;
+    margin-bottom: 24px;
+}
+.header h1 {
+    font-size: 26px;
+    color: #1a73e8;
+    margin-bottom: 6px;
+}
+.header .subtitle {
+    font-size: 14px;
+    color: #666;
+}
+.header .meta {
+    font-size: 12px;
+    color: #999;
+    margin-top: 4px;
+}
+.section {
+    margin-bottom: 24px;
+    page-break-inside: avoid;
+}
+.section-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1a1a2e;
+    border-left: 5px solid #1a73e8;
+    padding-left: 12px;
+    margin-bottom: 12px;
+}
+.risk-badge {
+    display: inline-block;
+    padding: 6px 20px;
+    border-radius: 20px;
+    font-size: 16px;
+    font-weight: 700;
+    color: #fff;
+}
+.risk-high { background: #d32f2f; }
+.risk-medium { background: #f57c00; }
+.risk-low { background: #388e3c; }
+.score-grid {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 12px;
+}
+.score-card {
+    flex: 1;
+    background: #f5f7fa;
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+}
+.score-card .label {
+    font-size: 12px;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.score-card .value {
+    font-size: 32px;
+    font-weight: 800;
+    margin: 6px 0;
+}
+.score-card .unit {
+    font-size: 12px;
+    color: #888;
+}
+.value-good { color: #388e3c; }
+.value-warning { color: #f57c00; }
+.value-danger { color: #d32f2f; }
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+thead th {
+    background: #f5f7fa;
+    text-align: left;
+    padding: 8px 12px;
+    font-weight: 600;
+    border-bottom: 2px solid #ddd;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+tbody td {
+    padding: 8px 12px;
+    border-bottom: 1px solid #eee;
+}
+tbody tr:hover { background: #fafbfc; }
+.severity-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 6px;
+}
+.severity-dot.low { background: #388e3c; }
+.severity-dot.medium { background: #f57c00; }
+.severity-dot.high { background: #d32f2f; }
+.data-row {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 12px;
+}
+.data-item {
+    flex: 1;
+    background: #f5f7fa;
+    border-radius: 6px;
+    padding: 12px;
+    text-align: center;
+}
+.data-item .label {
+    font-size: 12px;
+    color: #888;
+}
+.data-item .value {
+    font-size: 20px;
+    font-weight: 700;
+}
+.footer {
+    text-align: center;
+    border-top: 1px solid #eee;
+    padding-top: 14px;
+    margin-top: 30px;
+    font-size: 12px;
+    color: #aaa;
+}
+.physio-grid {
+    display: flex;
+    gap: 16px;
+}
+.physio-card {
+    flex: 1;
+    background: #fef3e0;
+    border: 1px solid #f5c842;
+    border-radius: 8px;
+    padding: 14px;
+    text-align: center;
+}
+.physio-card .label {
+    font-size: 12px;
+    color: #b87a14;
+}
+.physio-card .value {
+    font-size: 28px;
+    font-weight: 700;
+    color: #e65100;
+}
+.physio-card .unit {
+    font-size: 11px;
+    color: #b87a14;
+}
+.no-data {
+    color: #aaa;
+    font-style: italic;
+    padding: 8px 0;
+}
+.tag-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.tag-item {
+    display: inline-block;
+    background: #e8f0fe;
+    color: #1a73e8;
+    border-radius: 16px;
+    padding: 4px 14px;
+    font-size: 12px;
+}
+
+</style>
+</head>
+<body>
+
+<!-- ========== 报告头部 ========== -->
+<div class="header">
+    <h1>DriveGuard 驾驶注意力检测报告</h1>
+    <div class="subtitle">基于面部特征与姿态分析的驾驶员状态评估</div>
+    <div class="meta">任务ID: rpt &nbsp;|&nbsp; 生成时间: 2026-05-31 19:21:26</div>
+</div>
+
+<!-- ========== 综合风险评估 ========== -->
+<div class="section">
+    <div class="section-title">综合风险评估</div>
+    <p>
+        风险等级：
+        <span class="risk-badge risk-low">
+            低风险
+        </span>
+    </p>
+    <br>
+    <div class="score-grid">
+        <div class="score-card">
+            <div class="label">疲劳评分</div>
+            <div class="value value-good">90</div>
+            <div class="unit">/ 100（越高越清醒）</div>
+        </div>
+        <div class="score-card">
+            <div class="label">分心评分</div>
+            <div class="value value-good">85</div>
+            <div class="unit">/ 100（越高越专注）</div>
+        </div>
+    </div>
+</div>
+
+<!-- ========== 疲劳分析 ========== -->
+<div class="section">
+    <div class="section-title">疲劳检测分析</div>
+    <div class="data-row">
+        <div class="data-item">
+            <div class="label">平均 EAR</div>
+            <div class="value">--</div>
+        </div>
+        <div class="data-item">
+            <div class="label">最低 EAR</div>
+            <div class="value">--</div>
+        </div>
+        <div class="data-item">
+            <div class="label">眨眼频率</div>
+            <div class="value">--</div>
+        </div>
+        <div class="data-item">
+            <div class="label">点头次数</div>
+            <div class="value">0</div>
+        </div>
+    </div>
+    <div class="data-row">
+        <div class="data-item">
+            <div class="label">平均 MAR</div>
+            <div class="value">--</div>
+        </div>
+        <div class="data-item">
+            <div class="label">闭眼检测</div>
+            <div class="value">否</div>
+        </div>
+        <div class="data-item">
+            <div class="label">哈欠检测</div>
+            <div class="value">否</div>
+        </div>
+        <div class="data-item">
+            <div class="label">检测到面部</div>
+            <div class="value">否</div>
+        </div>
+    </div>
+</div>
+
+<!-- ========== 分心分析 ========== -->
+<div class="section">
+    <div class="section-title">分心检测分析</div>
+    <div class="data-row">
+        <div class="data-item">
+            <div class="label">头部俯仰角 (Pitch)</div>
+            <div class="value">--&deg;</div>
+        </div>
+        <div class="data-item">
+            <div class="label">头部偏航角 (Yaw)</div>
+            <div class="value">--&deg;</div>
+        </div>
+        <div class="data-item">
+            <div class="label">头部翻滚角 (Roll)</div>
+            <div class="value">--&deg;</div>
+        </div>
+    </div>
+    <div class="data-row">
+        <div class="data-item">
+            <div class="label">视线偏离角</div>
+            <div class="value">--</div>
+        </div>
+        <div class="data-item">
+            <div class="label">是否偏离</div>
+            <div class="value">否</div>
+        </div>
+        <div class="data-item">
+            <div class="label">视线偏离次数</div>
+            <div class="value">0</div>
+        </div>
+    </div>
+    <div class="data-row">
+        <div class="data-item" style="flex:2; text-align:left;">
+            <div class="label">检测到的物体</div>
+            <div class="tag-list">
+                <span class="no-data">未检测到异常物体</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========== 生理信号 ========== -->
+<div class="section">
+    <div class="section-title">生理信号监测</div>
+    <p class="no-data">未启用生理信号检测或数据不足</p>
+</div>
+
+<!-- ========== 告警记录 ========== -->
+<div class="section">
+    <div class="section-title">告警记录</div>
+    <p class="no-data">&#10004; 未检测到告警</p>
+</div>
+
+<!-- ========== 页脚 ========== -->
+<div class="footer">
+    由 DriveGuard AI 检测系统自动生成 &nbsp;|&nbsp; 本报告仅供辅助参考，不构成医学诊断
+</div>
+
+</body>
+</html>

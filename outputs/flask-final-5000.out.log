@@ -1,0 +1,8 @@
+[启动] 面部检测器预热完成 (后端: dlib)
+[启动] face_recognition/dlib 面部检测可用
+[启动] 提示: YOLO 驾驶状态模型未找到，可运行 python -m yolo.train_driver_state 训练
+[启动] YOLO 手持物检测模型就绪: D:\实验\计算机视觉\课程设计v1\models_data\yolo_handheld.pt
+[启动] YOLO 姿态估计模型就绪: D:\实验\计算机视觉\课程设计v1\models_data\yolov8n-pose.pt
+网站地址: http://127.0.0.1:5000
+ * Serving Flask app 'app'
+ * Debug mode: on

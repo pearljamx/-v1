@@ -1,0 +1,28 @@
+false : 无法将“false”项识别为 cmdlet、函数、脚本文件或可运行程序的名称。请检查名称的拼写，如果包括路径，请确保路径正
+确，然后再试一次。
+所在位置 行:1 字符: 18
++ $env:FLASK_DEBUG=false; & E:/python/python.exe D:/实验/计算机视觉/课程设计v1/app ...
++                  ~~~~~
+    + CategoryInfo          : ObjectNotFound: (false:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+W0000 00:00:1780310362.589153   46660 face_landmarker_graph.cc:180] Sets FaceBlendshapesGraph acceleration to xnnpack by default.
+INFO: Created TensorFlow Lite XNNPACK delegate for CPU.
+W0000 00:00:1780310362.605962   46932 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.
+W0000 00:00:1780310362.616379   48296 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on http://127.0.0.1:5000
+Press CTRL+C to quit
+ * Restarting with stat
+W0000 00:00:1780310365.278732   49876 face_landmarker_graph.cc:180] Sets FaceBlendshapesGraph acceleration to xnnpack by default.
+INFO: Created TensorFlow Lite XNNPACK delegate for CPU.
+W0000 00:00:1780310365.286241   48092 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.
+W0000 00:00:1780310365.295354   48092 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.
+ * Debugger is active!
+ * Debugger PIN: 114-014-121
+127.0.0.1 - - [01/Jun/2026 18:39:42] "GET /camera HTTP/1.1" 200 -
+W0000 00:00:1780310457.044948   52276 face_landmarker_graph.cc:180] Sets FaceBlendshapesGraph acceleration to xnnpack by default.
+W0000 00:00:1780310457.049866   48528 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.
+W0000 00:00:1780310457.058271   53952 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.
+127.0.0.1 - - [01/Jun/2026 18:40:57] "POST /camera/frame HTTP/1.1" 200 -
+127.0.0.1 - - [01/Jun/2026 18:40:57] "POST /camera/session/stop HTTP/1.1" 200 -

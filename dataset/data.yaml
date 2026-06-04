@@ -1,0 +1,15 @@
+# YOLOv8 手持物品检测 - 驾驶场景数据集
+# 5类: normal_driving, phone_usage, smoking, drinking, hands_off_wheel
+
+path: D:/实验/计算机视觉/课程设计v1/dataset
+train: train/images
+val: val/images
+test: test/images
+
+nc: 5
+names:
+  0: normal_driving
+  1: phone_usage
+  2: smoking
+  3: drinking
+  4: hands_off_wheel
