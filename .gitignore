@@ -15,6 +15,7 @@ env/
 uploads/
 outputs/
 runs/
+datasets/
 *.log
 
 # Model and database artifacts

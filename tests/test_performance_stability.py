@@ -405,8 +405,23 @@ class CameraFrontendStaticTests(unittest.TestCase):
         self.assertIn('id="camera-overlay-canvas"', html)
         self.assertNotIn('id="camera-output"', html)
         self.assertIn("drawOverlay", js)
+        self.assertIn("drawVirtualSteeringWheel", js)
         self.assertIn("overlayCanvas", js)
+        self.assertIn("enable-camera-distraction", html)
+        self.assertIn("metric-hand-state", html)
+        self.assertIn("metric-head-turn-state", html)
         self.assertNotIn("annotated_frame_b64", js)
+
+    def test_camera_page_exposes_demo_mode_and_no_camera_samples(self):
+        html = Path("templates/camera.html").read_text(encoding="utf-8")
+        js = Path("static/js/camera.js").read_text(encoding="utf-8")
+
+        self.assertIn("enable-demo-mode", html)
+        self.assertIn("camera-demo-fallback", html)
+        self.assertIn("btn-load-demo-samples", html)
+        self.assertIn("demo_mode", js)
+        self.assertIn("loadDemoSamples", js)
+        self.assertIn("/api/demo/samples", js)
 
     def test_upload_js_is_safe_on_pages_without_upload_controls(self):
         js = Path("static/js/upload.js").read_text(encoding="utf-8")
@@ -439,6 +454,14 @@ class YoloDatasetScriptTests(unittest.TestCase):
         self.assertIn("driver smoking", script)
         self.assertIn("driver drowsy", script)
 
+    def test_real_dataset_entry_lists_and_dry_runs(self):
+        script = Path("yolo/train_real_datasets.py").read_text(encoding="utf-8")
+
+        self.assertIn("Driver fatigue and distraction", script)
+        self.assertIn("n7i5x9/driver-drowsiness-dataset", script)
+        self.assertIn("--dry-run", script)
+        self.assertIn("yolo_driver_state.pt", script)
+
 
 class YoloModelCacheTests(unittest.TestCase):
     def test_distraction_detector_instances_share_yolo_models(self):
@@ -458,8 +481,9 @@ class YoloModelCacheTests(unittest.TestCase):
 
         self.assertIs(first.handheld_model, second.handheld_model)
         self.assertIs(first.driver_state_model, second.driver_state_model)
+        self.assertIs(first.steering_hand_model, second.steering_hand_model)
         self.assertIs(first.pose_model, second.pose_model)
-        self.assertEqual(FakeYOLO.load_count, 3)
+        self.assertEqual(FakeYOLO.load_count, 4)
 
     def test_single_and_double_hand_off_have_separate_alert_levels(self):
         import detectors.distraction as distraction_module
@@ -473,7 +497,9 @@ class YoloModelCacheTests(unittest.TestCase):
 
         status = detector.check_hands_on_wheel(keypoints, 640, 480, 0.0)
         self.assertEqual(status["state"], "left_off")
-        status = detector.check_hands_on_wheel(keypoints, 640, 480, 5.1)
+        self.assertEqual(status["threshold_seconds"], 8.0)
+        self.assertIn("wheel", status)
+        status = detector.check_hands_on_wheel(keypoints, 640, 480, 8.1)
         self.assertEqual(status["alert_level"], "warning")
 
         detector.reset()
@@ -481,8 +507,84 @@ class YoloModelCacheTests(unittest.TestCase):
         keypoints[distraction_module.KP_RIGHT_WRIST] = [100, 120, 0.9]
         status = detector.check_hands_on_wheel(keypoints, 640, 480, 0.0)
         self.assertEqual(status["state"], "both_off")
+        self.assertEqual(status["threshold_seconds"], 5.0)
         status = detector.check_hands_on_wheel(keypoints, 640, 480, 5.1)
         self.assertEqual(status["alert_level"], "danger")
+
+    def test_demo_mode_shortens_hand_off_durations_only_for_demo(self):
+        import detectors.distraction as distraction_module
+
+        with patch.object(distraction_module.DistractionDetector, "_init_models", lambda self: None):
+            detector = distraction_module.DistractionDetector(demo_mode=True)
+
+        keypoints = np.zeros((17, 3), dtype=np.float32)
+        keypoints[distraction_module.KP_LEFT_WRIST] = [100, 100, 0.9]
+        keypoints[distraction_module.KP_RIGHT_WRIST] = [320, 360, 0.9]
+
+        status = detector.check_hands_on_wheel(keypoints, 640, 480, 0.0)
+        self.assertEqual(status["state"], "left_off")
+        self.assertEqual(status["threshold_seconds"], 2.0)
+        self.assertTrue(status["demo_mode"])
+        status = detector.check_hands_on_wheel(keypoints, 640, 480, 2.1)
+        self.assertEqual(status["alert_level"], "warning")
+
+        detector.reset()
+        keypoints[distraction_module.KP_RIGHT_WRIST] = [100, 120, 0.9]
+        status = detector.check_hands_on_wheel(keypoints, 640, 480, 0.0)
+        self.assertEqual(status["threshold_seconds"], 1.5)
+        status = detector.check_hands_on_wheel(keypoints, 640, 480, 1.6)
+        self.assertEqual(status["alert_level"], "danger")
+
+    def test_head_turn_uses_sustained_threshold(self):
+        from detectors.head_pose import HeadPoseEstimator
+
+        estimator = HeadPoseEstimator()
+        self.assertIsNone(estimator.check_head_turn(40.0, 0.0))
+        self.assertIsNone(estimator.check_head_turn(40.0, 1.0))
+        alert = estimator.check_head_turn(40.0, 2.1)
+        self.assertIsNotNone(alert)
+        self.assertEqual(alert["type"], "head_turn")
+        self.assertEqual(alert["severity"], "warning")
+
+        estimator.reset()
+        estimator.check_head_turn(60.0, 0.0)
+        alert = estimator.check_head_turn(60.0, 2.1)
+        self.assertEqual(alert["severity"], "danger")
+
+    def test_demo_mode_shortens_head_turn_duration(self):
+        from detectors.head_pose import HeadPoseEstimator
+
+        estimator = HeadPoseEstimator(demo_mode=True)
+        self.assertIsNone(estimator.check_head_turn(40.0, 0.0))
+        alert = estimator.check_head_turn(40.0, 1.1)
+        self.assertIsNotNone(alert)
+        self.assertEqual(alert["metadata"]["threshold_seconds"], 1.0)
+        self.assertTrue(alert["metadata"]["demo_mode"])
+
+
+class DemoRoutesTests(unittest.TestCase):
+    def test_demo_samples_api_returns_upload_route_and_safe_urls(self):
+        from web import bp
+
+        app = Flask(__name__)
+        app.config["TESTING"] = True
+        app.register_blueprint(bp)
+        client = app.test_client()
+
+        response = client.get("/api/demo/samples")
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertEqual(payload["upload_url"], "/#upload-section")
+        self.assertIn("samples", payload)
+        for sample in payload["samples"]:
+            self.assertTrue(sample["url"].startswith("/demo/sample/dataset/"))
+
+        if payload["samples"]:
+            sample_response = client.get(payload["samples"][0]["url"])
+            try:
+                self.assertEqual(sample_response.status_code, 200)
+            finally:
+                sample_response.close()
 
 
 class ApiFlowTests(unittest.TestCase):

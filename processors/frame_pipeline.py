@@ -8,7 +8,9 @@
 import time
 import logging
 import numpy as np
-from config import FPS_TARGET, PPG_WINDOW
+from config import (
+    FPS_TARGET, HEAD_TURN_DURATION, HEAD_TURN_YAW_THRESHOLD, PPG_WINDOW
+)
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +40,7 @@ class FramePipeline:
                 'physio': False
             }
         self.enable_modules = enable_modules
+        self.demo_mode = bool(enable_modules.get('demo_mode', False))
 
         # 延迟导入检测器模块（避免加载时的循环依赖）
         from detectors.face_detector import FaceDetector
@@ -57,7 +60,7 @@ class FramePipeline:
 
         if enable_modules.get('pose', True):
             from detectors.head_pose import HeadPoseEstimator
-            self.head_pose_estimator = HeadPoseEstimator()
+            self.head_pose_estimator = HeadPoseEstimator(demo_mode=self.demo_mode)
 
         if enable_modules.get('gaze', True):
             from detectors.gaze import GazeEstimator
@@ -65,7 +68,7 @@ class FramePipeline:
 
         if enable_modules.get('distraction', True):
             from detectors.distraction import DistractionDetector
-            self.distraction_detector = DistractionDetector()
+            self.distraction_detector = DistractionDetector(demo_mode=self.demo_mode)
 
         if enable_modules.get('physio', False):
             from detectors.physiological import rPPGMonitor
@@ -209,6 +212,15 @@ class FramePipeline:
                     'pitch': pitch,
                     'yaw': yaw,
                     'roll': roll,
+                    'direction': self._head_direction(pitch, yaw),
+                    'head_turning': abs(yaw) > HEAD_TURN_YAW_THRESHOLD,
+                    'head_turn_threshold': HEAD_TURN_YAW_THRESHOLD,
+                    'head_turn_duration_threshold': getattr(
+                        self.head_pose_estimator,
+                        'head_turn_duration',
+                        HEAD_TURN_DURATION,
+                    ),
+                    'demo_mode': bool(self.demo_mode),
                 }
 
                 # 点头检测
@@ -217,6 +229,13 @@ class FramePipeline:
                     nod_alert['source'] = 'head_pose'
                     self.alert_manager.add_alert(nod_alert)
                     result['alerts'].append(nod_alert)
+
+                # 转头检测
+                head_turn_alert = self.head_pose_estimator.check_head_turn(yaw, timestamp)
+                if head_turn_alert:
+                    head_turn_alert['source'] = 'head_pose'
+                    self.alert_manager.add_alert(head_turn_alert)
+                    result['alerts'].append(head_turn_alert)
 
                 self.pitch_history.append({'t': timestamp, 'v': pitch})
                 self.yaw_history.append({'t': timestamp, 'v': yaw})
@@ -375,6 +394,8 @@ class FramePipeline:
             'pose_keypoints': [],
             'pose_skeleton': [],
             'wheel_roi': None,
+            'virtual_wheel': None,
+            'wheel_state': None,
             'wrists': {},
             'shoulders': {},
             'body_turn_vector': None,
@@ -453,6 +474,26 @@ class FramePipeline:
             roi = hand_status.get('roi')
             if roi:
                 overlay['wheel_roi'] = [int(v) for v in roi]
+            wheel = hand_status.get('wheel')
+            if wheel:
+                overlay['virtual_wheel'] = {
+                    'center': [float(v) for v in wheel.get('center', [0, 0])],
+                    'radius_x': float(wheel.get('radius_x', 0)),
+                    'radius_y': float(wheel.get('radius_y', 0)),
+                    'bbox': [int(v) for v in wheel.get('bbox', [])],
+                    'grip_left': [float(v) for v in wheel.get('grip_left', [])],
+                    'grip_right': [float(v) for v in wheel.get('grip_right', [])],
+                }
+            overlay['wheel_state'] = {
+                'state': hand_status.get('state', 'unknown'),
+                'severity': hand_status.get('alert_level') or (
+                    'warning' if hand_status.get('state') in {'left_off', 'right_off'} else 'success'
+                ),
+                'left_on_wheel': bool(hand_status.get('left_on_wheel', hand_status.get('left_in_roi', False))),
+                'right_on_wheel': bool(hand_status.get('right_on_wheel', hand_status.get('right_in_roi', False))),
+                'duration': float(hand_status.get('duration', 0.0)),
+                'threshold_seconds': float(hand_status.get('threshold_seconds', 0.0) or 0.0),
+            }
             overlay['wrists'] = hand_status.get('wrists', {})
             if hand_status.get('alert_level'):
                 overlay['alert_regions'].append({
@@ -477,6 +518,17 @@ class FramePipeline:
                 }
 
         return overlay
+
+    @staticmethod
+    def _head_direction(pitch, yaw):
+        """将头部 pitch/yaw 转为页面展示用方向状态。"""
+        pitch = float(pitch)
+        yaw = float(yaw)
+        if abs(yaw) > HEAD_TURN_YAW_THRESHOLD:
+            return 'right' if yaw > 0 else 'left'
+        if abs(pitch) > 15.0:
+            return 'up' if pitch > 0 else 'down'
+        return 'forward'
 
     @staticmethod
     def _points_to_list(points):

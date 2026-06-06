@@ -2,90 +2,124 @@
 {% block title %}实时摄像头检测 — DriveGuard{% endblock %}
 
 {% block content %}
-<div class="camera-page" style="max-width:1400px;margin:0 auto;padding:24px 20px 40px;">
-
-    <!-- 页面标题 -->
-    <div style="margin-bottom:24px;">
-        <h2 style="font-size:26px;font-weight:700;color:var(--text-primary);margin:0 0 4px;">
-            <i class="bi bi-camera-video-fill" style="color:var(--brand-teal);"></i> 实时摄像头检测
-        </h2>
-        <p style="font-size:14px;color:var(--text-secondary);margin:0;">
-            调用电脑摄像头，实时进行驾驶注意力检测与分析
-        </p>
-    </div>
-
-    <!-- 主内容区：两列布局 -->
-    <div style="display:grid; grid-template-columns: 1.6fr 1fr; gap:20px;">
-
-        <!-- 左列：摄像头画面 -->
+<div class="camera-page camera-dashboard">
+    <div class="camera-hero">
         <div>
-            <!-- 设备选择和状态栏 -->
-            <div class="card-dark" style="margin-bottom:16px;">
-                <div class="card-body" style="padding:14px 18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
-                    <!-- 摄像头选择 -->
-                    <select id="camera-device-select" class="form-select-custom" style="flex:1;min-width:180px;">
-                        <option value="">正在加载摄像头列表...</option>
-                    </select>
-
-                    <!-- 状态指示 -->
-                    <div style="display:flex;align-items:center;gap:8px;">
-                        <span id="live-status-dot" class="live-dot inactive"></span>
-                        <span id="live-status-text" style="font-size:14px;font-weight:500;color:var(--text-secondary);">就绪</span>
-                    </div>
-
-                    <!-- 按钮 -->
-                    <button id="btn-start-camera" class="btn btn-primary btn-sm">
-                        <i class="bi bi-play-fill"></i> 开始检测
-                    </button>
-                    <button id="btn-stop-camera" class="btn btn-danger btn-sm" style="display:none;">
-                        <i class="bi bi-stop-fill"></i> 停止
-                    </button>
-
-                    <!-- TTS语音播报开关 -->
-                    <button id="btn-tts-mute" class="btn btn-outline-secondary btn-sm" onclick="toggleTtsMute()" title="切换语音播报">
-                        <i class="bi bi-volume-up-fill"></i> 静音
-                    </button>
-
-                    <!-- 性能指标 -->
-                    <span style="font-size:12px;color:var(--text-muted);">
-                        FPS: <strong id="fps-display" style="color:var(--text-primary);">--</strong>
-                    </span>
-                    <span style="font-size:12px;color:var(--text-muted);">
-                        延迟: <strong id="latency-display" style="color:var(--text-primary);">--</strong>ms
-                    </span>
-                </div>
+            <div class="camera-kicker">
+                <i class="bi bi-shield-check"></i>
+                DriveGuard Live Monitor
             </div>
-
-            <!-- 摄像头画面容器 -->
-            <div class="camera-container" id="camera-container">
-                <div id="camera-placeholder" class="preview-placeholder" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">
-                    <div style="text-align:center;">
-                        <i class="bi bi-camera-video-off" style="font-size:5rem;color:var(--text-muted);opacity:0.4;"></i>
-                        <p style="color:var(--text-secondary);margin-top:16px;font-size:15px;">点击"开始检测"启动摄像头</p>
-                        <p style="color:var(--text-muted);font-size:13px;">需要授权摄像头访问权限</p>
-                    </div>
-                </div>
-                <video id="camera-video" style="width:100%;height:100%;object-fit:contain;display:none;background:#000;" playsinline autoplay muted></video>
-                <canvas id="camera-overlay-canvas" style="position:absolute;inset:0;width:100%;height:100%;display:none;pointer-events:none;"></canvas>
-                <canvas id="camera-canvas" style="display:none;"></canvas>
+            <h2>驾驶注意力实时检测</h2>
+            <p>摄像头画面、虚拟方向盘、手部离把、转头分心与疲劳状态统一展示。</p>
+        </div>
+        <div class="camera-hero-metrics">
+            <div class="mini-stat">
+                <span>FPS</span>
+                <strong id="fps-display">--</strong>
+            </div>
+            <div class="mini-stat">
+                <span>延迟</span>
+                <strong id="latency-display">--ms</strong>
+            </div>
+            <div class="mini-stat">
+                <span>状态</span>
+                <strong id="live-status-text">就绪</strong>
             </div>
         </div>
+    </div>
 
-        <!-- 右列：实时度量面板 -->
-        <div>
-            <!-- 人脸检测状态 -->
-            <div class="card-dark" style="margin-bottom:16px;">
+    <div class="camera-control-card">
+        <select id="camera-device-select" class="form-select-custom camera-device-select">
+            <option value="">正在加载摄像头列表...</option>
+        </select>
+
+        <div class="live-status-chip">
+            <span id="live-status-dot" class="live-dot inactive"></span>
+            <span>实时分析</span>
+        </div>
+
+        <label class="module-toggle" title="启用 YOLO pose、方向盘 ROI、手离把和转身检测">
+            <input id="enable-camera-distraction" type="checkbox" checked>
+            <span>手部/转身</span>
+        </label>
+        <label class="module-toggle" title="启用 rPPG 生理指标估计，需保持面部稳定">
+            <input id="enable-camera-physio" type="checkbox">
+            <span>生理状态</span>
+        </label>
+        <label class="module-toggle demo-toggle" title="课堂演示模式仅缩短持续时间阈值，算法逻辑不变">
+            <input id="enable-demo-mode" type="checkbox">
+            <span>演示模式</span>
+        </label>
+
+        <div class="camera-actions">
+            <button id="btn-start-camera" class="btn btn-primary btn-sm">
+                <i class="bi bi-play-fill"></i> 开始检测
+            </button>
+            <button id="btn-stop-camera" class="btn btn-danger btn-sm" style="display:none;">
+                <i class="bi bi-stop-fill"></i> 停止
+            </button>
+            <button id="btn-tts-mute" class="btn btn-outline-secondary btn-sm" onclick="toggleTtsMute()" title="切换语音播报">
+                <i class="bi bi-volume-up-fill"></i>
+            </button>
+        </div>
+    </div>
+
+    <div class="camera-layout">
+        <section class="camera-stage-card">
+            <div class="camera-stage-header">
+                <div>
+                    <h3>驾驶舱画面</h3>
+                    <p>画面下方会绘制虚拟方向盘，左右握持区域用于判断手部状态。</p>
+                </div>
+                <div class="risk-legend">
+                    <span><i class="legend-dot success"></i>正常</span>
+                    <span><i class="legend-dot warning"></i>警告</span>
+                    <span><i class="legend-dot danger"></i>危险</span>
+                </div>
+            </div>
+
+            <div class="camera-container" id="camera-container">
+                <div id="camera-placeholder" class="preview-placeholder camera-placeholder">
+                    <div>
+                        <i class="bi bi-camera-video-off"></i>
+                        <p>点击“开始检测”启动摄像头</p>
+                        <small>需要浏览器授权摄像头访问权限</small>
+                    </div>
+                </div>
+                <video id="camera-video" class="camera-video" playsinline autoplay muted></video>
+                <canvas id="camera-overlay-canvas" class="camera-overlay-canvas"></canvas>
+                <canvas id="camera-canvas" style="display:none;"></canvas>
+            </div>
+
+            <div class="demo-fallback-card" id="camera-demo-fallback">
+                <div>
+                    <strong>无摄像头备用演示</strong>
+                    <p>如果现场没有摄像头，可下载固定样例后回到首页上传检测，继续展示图像/视频流程。</p>
+                </div>
+                <div class="demo-fallback-actions">
+                    <a href="/#upload-section" class="btn btn-outline btn-sm">
+                        <i class="bi bi-upload"></i> 上传演示
+                    </a>
+                    <button id="btn-load-demo-samples" type="button" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-images"></i> 固定样例
+                    </button>
+                </div>
+                <div id="demo-samples-list" class="demo-samples-list"></div>
+            </div>
+        </section>
+
+        <aside class="camera-side-panel">
+            <div class="status-card primary-status">
                 <div class="card-header">
                     <h5><i class="bi bi-person-bounding-box"></i> 人脸检测</h5>
                 </div>
-                <div class="card-body" style="text-align:center;padding:20px;">
-                    <div id="metric-face-status" class="metric-value" style="font-size:24px;">--</div>
-                    <div style="font-size:13px;color:var(--text-muted);">面部关键点状态</div>
+                <div class="card-body centered-card">
+                    <div id="metric-face-status" class="metric-value">--</div>
+                    <span class="metric-hint">面部关键点状态</span>
                 </div>
             </div>
 
-            <!-- 疲劳指标 -->
-            <div class="card-dark" style="margin-bottom:16px;">
+            <div class="status-card">
                 <div class="card-header">
                     <h5><i class="bi bi-eye"></i> 疲劳指标</h5>
                 </div>
@@ -93,79 +127,126 @@
                     <div class="realtime-metric">
                         <div class="metric-label">眼纵横比 (EAR)</div>
                         <div id="metric-ear" class="metric-value">--</div>
-                        <div style="font-size:11px;color:var(--text-muted);">阈值: &lt;0.2 闭眼</div>
+                        <div class="metric-hint">阈值: &lt;0.2 闭眼</div>
                     </div>
                     <div class="realtime-metric">
                         <div class="metric-label">嘴纵横比 (MAR)</div>
                         <div id="metric-mar" class="metric-value">--</div>
-                        <div style="font-size:11px;color:var(--text-muted);">阈值: &gt;0.5 哈欠</div>
+                        <div class="metric-hint">阈值: &gt;0.5 哈欠</div>
                     </div>
                     <div class="realtime-metric">
                         <div class="metric-label">眨眼频率</div>
                         <div id="metric-blink-rate" class="metric-value">--</div>
-                        <div style="font-size:11px;color:var(--text-muted);">次/分钟 (正常15-20)</div>
+                        <div class="metric-hint">次/分钟 (正常15-20)</div>
                     </div>
                 </div>
             </div>
 
-            <!-- 头部姿态 -->
-            <div class="card-dark" style="margin-bottom:16px;">
+            <div class="status-card">
                 <div class="card-header">
-                    <h5><i class="bi bi-arrow-left-right"></i> 头部姿态</h5>
+                    <h5><i class="bi bi-arrow-left-right"></i> 转头/转身</h5>
                 </div>
                 <div class="card-body">
+                    <div class="realtime-metric wide">
+                        <div class="metric-label">头部方向</div>
+                        <div id="metric-head-direction" class="metric-value">--</div>
+                        <div id="metric-head-turn-threshold" class="metric-hint">Yaw &gt; 35° 持续 2s</div>
+                    </div>
                     <div class="realtime-metric">
                         <div class="metric-label">俯仰角 (Pitch)</div>
                         <div id="metric-head-pitch" class="metric-value">--</div>
-                        <div style="font-size:11px;color:var(--text-muted);">|pitch| &gt; 15° 点头</div>
+                        <div class="metric-hint">|pitch| &gt; 15° 点头</div>
                     </div>
                     <div class="realtime-metric">
                         <div class="metric-label">偏航角 (Yaw)</div>
                         <div id="metric-head-yaw" class="metric-value">--</div>
                     </div>
+                    <div class="status-grid compact">
+                        <div>
+                            <span class="metric-label">转头告警</span>
+                            <strong id="metric-head-turn-state" class="metric-value">--</strong>
+                        </div>
+                        <div>
+                            <span class="metric-label">躯干扭转</span>
+                            <strong id="metric-body-turn-state" class="metric-value">--</strong>
+                        </div>
+                        <div>
+                            <span class="metric-label">扭转角</span>
+                            <strong id="metric-body-turn-angle" class="metric-value">--</strong>
+                        </div>
+                        <div>
+                            <span class="metric-label">持续</span>
+                            <strong id="metric-body-turn-duration" class="metric-value">--</strong>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <!-- 视线方向 -->
-            <div class="card-dark" style="margin-bottom:16px;">
+            <div class="status-card">
+                <div class="card-header">
+                    <h5><i class="bi bi-life-preserver"></i> 方向盘/手部</h5>
+                </div>
+                <div class="card-body">
+                    <div class="realtime-metric wide">
+                        <div class="metric-label">手部状态</div>
+                        <div id="metric-hand-state" class="metric-value">--</div>
+                        <div id="metric-hand-threshold" class="metric-hint">双手 5s / 单手 8s</div>
+                    </div>
+                    <div class="hand-status-row">
+                        <span id="metric-hand-left" class="status-pill">左手等待</span>
+                        <span id="metric-hand-right" class="status-pill">右手等待</span>
+                        <span class="status-pill muted">持续 <b id="metric-hand-duration">0.0s</b></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="status-card">
                 <div class="card-header">
                     <h5><i class="bi bi-crosshair"></i> 视线方向</h5>
                 </div>
-                <div class="card-body" style="text-align:center;padding:20px;">
-                    <div id="metric-gaze-angle" class="metric-value" style="font-size:32px;">--</div>
-                    <div style="font-size:13px;color:var(--text-muted);">偏离角度 (阈值 &gt;30°)</div>
+                <div class="card-body centered-card">
+                    <div id="metric-gaze-angle" class="metric-value large">--</div>
+                    <span class="metric-hint">偏离角度 (阈值 &gt;30°)</span>
                 </div>
             </div>
 
-            <!-- 环境光照 -->
-            <div class="card-dark" style="margin-bottom:16px;">
+            <div class="status-card">
                 <div class="card-header">
                     <h5><i class="bi bi-brightness-high"></i> 环境光照</h5>
                 </div>
-                <div class="card-body" style="text-align:center;padding:20px;">
-                    <div id="metric-lighting-level" class="metric-value" style="font-size:22px;">--</div>
-                    <div style="font-size:13px;color:var(--text-muted);margin-top:4px;">
+                <div class="card-body centered-card">
+                    <div id="metric-lighting-level" class="metric-value">--</div>
+                    <div class="metric-hint">
                         亮度: <span id="metric-brightness-value" style="color:var(--text-primary);">--</span>
                     </div>
-                    <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">
+                    <div class="metric-hint">
                         EAR阈值: <span id="metric-adaptive-ear" style="color:var(--text-primary);">--</span> |
                         MAR阈值: <span id="metric-adaptive-mar" style="color:var(--text-primary);">--</span>
                     </div>
                 </div>
             </div>
 
-            <!-- 活跃告警 -->
-            <div class="card-dark">
+            <div class="status-card">
+                <div class="card-header">
+                    <h5><i class="bi bi-heart-pulse"></i> 生理状态</h5>
+                </div>
+                <div class="card-body centered-card">
+                    <div class="metric-value">rPPG</div>
+                    <span class="metric-hint">开启后约 10 秒输出心率/血压趋势</span>
+                </div>
+            </div>
+
+            <div class="status-card alert-card">
                 <div class="card-header">
                     <h5><i class="bi bi-exclamation-triangle"></i> 活跃告警</h5>
                 </div>
-                <div class="card-body" id="active-alerts-list" style="max-height:240px;overflow-y:auto;">
-                    <div style="padding:12px;color:var(--text-muted);text-align:center;font-size:14px;">
+                <div class="card-body" id="active-alerts-list">
+                    <div class="empty-alerts">
                         等待检测开始...
                     </div>
                 </div>
             </div>
-        </div>
+        </aside>
     </div>
 </div>
 {% endblock %}

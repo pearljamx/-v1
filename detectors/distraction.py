@@ -19,8 +19,12 @@ import numpy as np
 from ultralytics import YOLO
 
 from config import (
-    YOLO_HANDHELD_MODEL, YOLO_DRIVER_STATE_MODEL, YOLO_POSE_MODEL,
-    HAND_OFF_WHEEL_DURATION, SHOULDER_YAW_THRESHOLD, BODY_TURN_ANGLE,
+    YOLO_HANDHELD_MODEL, YOLO_DRIVER_STATE_MODEL, YOLO_STEERING_HAND_MODEL,
+    YOLO_POSE_MODEL, HAND_OFF_WHEEL_DURATION, SINGLE_HAND_OFF_WHEEL_DURATION,
+    DEMO_HAND_OFF_WHEEL_DURATION, DEMO_SINGLE_HAND_OFF_WHEEL_DURATION,
+    HAND_KEYPOINT_CONFIDENCE, VIRTUAL_WHEEL_CENTER, VIRTUAL_WHEEL_RADIUS,
+    VIRTUAL_WHEEL_GRIP_TOLERANCE, SHOULDER_YAW_THRESHOLD, BODY_TURN_ANGLE,
+    BODY_TURN_DURATION, DEMO_BODY_TURN_DURATION,
     YOLO_OBJECT_CONFIDENCE, YOLO_OBJECT_CONFIRM_DURATION
 )
 
@@ -58,10 +62,20 @@ DRIVER_STATE_LABELS = {
     "eating": 5,
     "driver turning": 6,
     "turning": 6,
+    "turning back": 6,
+    "looking back": 6,
+    "head turning": 6,
     "driver drowsy": 7,
     "driver sleeping": 7,
     "drowsy": 7,
     "sleeping": 7,
+    "hands off wheel": 4,
+    "hands off steering wheel": 4,
+    "hand off wheel": 4,
+    "hand on wheel": 0,
+    "hands on wheel": 0,
+    "hands on steering wheel": 0,
+    "steering wheel": 0,
     "driver awake": 0,
     "awake": 0,
     "normal": 0,
@@ -119,10 +133,21 @@ class DistractionDetector:
     任一模型不可用时自动降级, 对应检测返回空/None。
     """
 
-    def __init__(self):
+    def __init__(self, demo_mode=False):
+        self.demo_mode = bool(demo_mode)
+        self.hand_off_duration = (
+            DEMO_HAND_OFF_WHEEL_DURATION if self.demo_mode else HAND_OFF_WHEEL_DURATION
+        )
+        self.single_hand_off_duration = (
+            DEMO_SINGLE_HAND_OFF_WHEEL_DURATION
+            if self.demo_mode else SINGLE_HAND_OFF_WHEEL_DURATION
+        )
+        self.body_turn_duration = DEMO_BODY_TURN_DURATION if self.demo_mode else BODY_TURN_DURATION
+
         # --- 模型 ---
         self.handheld_model = None
         self.driver_state_model = None
+        self.steering_hand_model = None
         self.pose_model = None
         self._init_models()
 
@@ -133,13 +158,18 @@ class DistractionDetector:
 
         # --- 转身检测状态追踪 ---
         self.shoulder_positions = deque(maxlen=30)  # 肩部中心点历史坐标
+        self.body_turn_start = None
         self.body_turn_active = False
         self.body_turn_info = {}
         self.object_confirm_starts = {}
 
-        # --- 方向盘 ROI（归一化坐标） ---
-        # (x, y, w, h) → 图像下半部分中心区域，约 25%-75% 宽度，60%-95% 高度
-        self.wheel_roi = (0.25, 0.6, 0.5, 0.35)
+        # --- 虚拟方向盘（归一化坐标） ---
+        # 使用画面下半部分的椭圆方向盘，既用于前端绘制，也用于手腕 ROI 判断。
+        cx, cy = VIRTUAL_WHEEL_CENTER
+        rx, ry = VIRTUAL_WHEEL_RADIUS
+        self.virtual_wheel_center = (cx, cy)
+        self.virtual_wheel_radius = (rx, ry)
+        self.wheel_roi = (cx - rx, cy - ry, rx * 2, ry * 2)
 
     # ========================================================================
     # 模型初始化
@@ -148,6 +178,7 @@ class DistractionDetector:
     def _init_models(self):
         """初始化 YOLO 模型, 任一模型文件不存在时优雅降级并记录警告。"""
         self._try_load_driver_state()
+        self._try_load_steering_hand()
         self._try_load_handheld()
         self._try_load_pose()
 
@@ -167,6 +198,14 @@ class DistractionDetector:
             "手持物检测功能将禁用。如需启用, 请将训练好的模型放到该路径。",
         )
 
+    def _try_load_steering_hand(self):
+        """尝试加载真实方向盘/手部检测模型。"""
+        self.steering_hand_model = _load_cached_yolo_model(
+            YOLO_STEERING_HAND_MODEL,
+            "方向盘手部检测模型",
+            "可选模型不可用，将使用 YOLO pose 手腕关键点 + 虚拟方向盘 ROI 判断。",
+        )
+
     def _try_load_pose(self):
         """尝试加载人体姿态估计模型。"""
         self.pose_model = _load_cached_yolo_model(
@@ -184,6 +223,11 @@ class DistractionDetector:
     def driver_state_available(self) -> bool:
         """驾驶状态检测是否可用。"""
         return self.driver_state_model is not None
+
+    @property
+    def steering_hand_available(self) -> bool:
+        """方向盘/手部检测模型是否可用。"""
+        return self.steering_hand_model is not None
 
     @property
     def pose_available(self) -> bool:
@@ -214,6 +258,10 @@ class DistractionDetector:
         if self.driver_state_available:
             detected.extend(self._detect_with_model(
                 self.driver_state_model, image, source="driver_state"
+            ))
+        if self.steering_hand_available:
+            detected.extend(self._detect_with_model(
+                self.steering_hand_model, image, source="steering_hand"
             ))
         if self.handheld_available:
             detected.extend(self._detect_with_model(
@@ -341,26 +389,20 @@ class DistractionDetector:
         if img_width <= 0 or img_height <= 0:
             return {'state': 'unknown', 'alert_level': None, 'duration': 0.0}
 
-        # 计算方向盘 ROI 像素边界
-        rx, ry, rw, rh = self.wheel_roi
-        roi_x1 = int(rx * img_width)
-        roi_y1 = int(ry * img_height)
-        roi_x2 = int((rx + rw) * img_width)
-        roi_y2 = int((ry + rh) * img_height)
+        wheel = self._virtual_wheel_geometry(img_width, img_height)
+        roi_x1, roi_y1, roi_x2, roi_y2 = wheel['bbox']
 
         # 检查左腕 (9) 和右腕 (10) 是否在 ROI 内
         left_wrist = keypoints[KP_LEFT_WRIST]
         right_wrist = keypoints[KP_RIGHT_WRIST]
 
         left_in_roi = (
-            left_wrist[2] >= 0.3
-            and self._point_in_roi(left_wrist[0], left_wrist[1],
-                                    roi_x1, roi_y1, roi_x2, roi_y2)
+            left_wrist[2] >= HAND_KEYPOINT_CONFIDENCE
+            and self._point_on_virtual_wheel(left_wrist[0], left_wrist[1], wheel)
         )
         right_in_roi = (
-            right_wrist[2] >= 0.3
-            and self._point_in_roi(right_wrist[0], right_wrist[1],
-                                    roi_x1, roi_y1, roi_x2, roi_y2)
+            right_wrist[2] >= HAND_KEYPOINT_CONFIDENCE
+            and self._point_on_virtual_wheel(right_wrist[0], right_wrist[1], wheel)
         )
 
         both_hands_off = (not left_in_roi) and (not right_in_roi)
@@ -375,36 +417,86 @@ class DistractionDetector:
                 self.hands_off_start = timestamp
             duration = timestamp - self.hands_off_start
             state = 'both_off'
-            if duration >= HAND_OFF_WHEEL_DURATION:
+            if duration >= self.hand_off_duration:
                 self.hands_off_active = True
                 alert_level = 'danger'
+            threshold_seconds = self.hand_off_duration
         elif one_hand_off:
             self.hands_off_start = None
             if self.single_hand_off_start is None:
                 self.single_hand_off_start = timestamp
             duration = timestamp - self.single_hand_off_start
             state = 'left_off' if not left_in_roi else 'right_off'
-            if duration >= HAND_OFF_WHEEL_DURATION:
+            if duration >= self.single_hand_off_duration:
                 self.hands_off_active = True
                 alert_level = 'warning'
+            threshold_seconds = self.single_hand_off_duration
         else:
             # 双手在方向盘上 → 重置
             self.single_hand_off_start = None
             self.hands_off_start = None
             self.hands_off_active = False
+            threshold_seconds = 0.0
 
         return {
             'state': state,
+            'status': state,
             'left_in_roi': bool(left_in_roi),
             'right_in_roi': bool(right_in_roi),
+            'left_on_wheel': bool(left_in_roi),
+            'right_on_wheel': bool(right_in_roi),
             'alert_level': alert_level,
             'duration': float(duration),
+            'threshold_seconds': float(threshold_seconds),
+            'demo_mode': bool(self.demo_mode),
             'roi': (roi_x1, roi_y1, roi_x2, roi_y2),
+            'wheel': wheel,
             'wrists': {
                 'left': [float(left_wrist[0]), float(left_wrist[1]), float(left_wrist[2])],
                 'right': [float(right_wrist[0]), float(right_wrist[1]), float(right_wrist[2])],
             },
         }
+
+    def _virtual_wheel_geometry(self, img_width, img_height):
+        """返回前后端共用的虚拟方向盘几何参数。"""
+        cx = float(self.virtual_wheel_center[0] * img_width)
+        cy = float(self.virtual_wheel_center[1] * img_height)
+        radius_x = float(self.virtual_wheel_radius[0] * img_width)
+        radius_y = float(self.virtual_wheel_radius[1] * img_height)
+        bbox = (
+            int(max(0, cx - radius_x)),
+            int(max(0, cy - radius_y)),
+            int(min(img_width, cx + radius_x)),
+            int(min(img_height, cy + radius_y)),
+        )
+        grip_left = [cx - radius_x * 0.82, cy, radius_x * 0.23, radius_y * 0.58]
+        grip_right = [cx + radius_x * 0.82, cy, radius_x * 0.23, radius_y * 0.58]
+        return {
+            'center': [cx, cy],
+            'radius_x': radius_x,
+            'radius_y': radius_y,
+            'bbox': bbox,
+            'grip_left': grip_left,
+            'grip_right': grip_right,
+        }
+
+    @staticmethod
+    def _point_on_virtual_wheel(px, py, wheel):
+        """判断关键点是否落在虚拟方向盘握持区域内。"""
+        cx, cy = wheel['center']
+        rx = max(float(wheel['radius_x']), 1.0)
+        ry = max(float(wheel['radius_y']), 1.0)
+        bbox = wheel['bbox']
+        if not DistractionDetector._point_in_roi(px, py, *bbox):
+            return False
+
+        nx = (float(px) - cx) / rx
+        ny = (float(py) - cy) / ry
+        ellipse_distance = nx * nx + ny * ny
+        # 方向盘实际握持多在椭圆环附近；适当放宽到内圈，提升普通摄像头下的稳定性。
+        inner = 0.0
+        outer = 1.0 + VIRTUAL_WHEEL_GRIP_TOLERANCE * 2.5
+        return inner <= ellipse_distance <= outer and py >= cy - ry * 1.05
 
     @staticmethod
     def _point_in_roi(px, py, rx1, ry1, rx2, ry2):
@@ -445,7 +537,7 @@ class DistractionDetector:
 
         # 置信度检查
         if left_shoulder[2] < 0.3 or right_shoulder[2] < 0.3:
-            # 关键点不可靠, 不清除状态但也不触发
+            # 关键点不可靠, 不清除历史, 但不新增持续计时
             return self.body_turn_active
 
         # 当前肩部中心
@@ -488,14 +580,27 @@ class DistractionDetector:
             'baseline': [float(mean_x), float(mean_y)],
             'estimated_angle': float(estimated_angle),
             'shoulder_angle': float(shoulder_angle),
+            'duration': 0.0,
+            'threshold_angle': float(BODY_TURN_ANGLE),
+            'threshold_seconds': float(self.body_turn_duration),
+            'demo_mode': bool(self.demo_mode),
             'left_shoulder': [float(left_shoulder[0]), float(left_shoulder[1]), float(left_shoulder[2])],
             'right_shoulder': [float(right_shoulder[0]), float(right_shoulder[1]), float(right_shoulder[2])],
         }
 
-        if estimated_angle > BODY_TURN_ANGLE or shoulder_angle > SHOULDER_YAW_THRESHOLD:
-            self.body_turn_active = True
+        is_turn_candidate = estimated_angle > BODY_TURN_ANGLE or shoulder_angle > SHOULDER_YAW_THRESHOLD
+        if is_turn_candidate:
+            if self.body_turn_start is None:
+                self.body_turn_start = timestamp
+            duration = timestamp - self.body_turn_start
+            self.body_turn_info['duration'] = float(duration)
+            self.body_turn_active = duration >= self.body_turn_duration
         else:
+            self.body_turn_start = None
             self.body_turn_active = False
+            self.body_turn_info['duration'] = 0.0
+        self.body_turn_info['candidate'] = bool(is_turn_candidate)
+        self.body_turn_info['active'] = bool(self.body_turn_active)
 
         return self.body_turn_active
 
@@ -613,9 +718,9 @@ class DistractionDetector:
                 level = hand_status.get('alert_level', 'warning')
                 state = hand_status.get('state', '')
                 message = (
-                    f"双手离开方向盘超过 {HAND_OFF_WHEEL_DURATION:.0f} 秒"
+                    f"双手离开方向盘超过 {self.hand_off_duration:g} 秒"
                     if level == 'danger'
-                    else f"单手离开方向盘超过 {HAND_OFF_WHEEL_DURATION:.0f} 秒"
+                    else f"单手离开方向盘超过 {self.single_hand_off_duration:g} 秒"
                 )
                 alerts.append({
                     'source': 'distraction',
@@ -625,6 +730,8 @@ class DistractionDetector:
                     'message': message,
                     'metadata': {
                         'duration': hand_status.get('duration', HAND_OFF_WHEEL_DURATION),
+                        'threshold_seconds': hand_status.get('threshold_seconds'),
+                        'demo_mode': bool(self.demo_mode),
                         'state': state,
                     },
                 })
@@ -662,6 +769,7 @@ class DistractionDetector:
         self.single_hand_off_start = None
         self.hands_off_active = False
         self.shoulder_positions.clear()
+        self.body_turn_start = None
         self.body_turn_active = False
         self.body_turn_info = {}
         self.object_confirm_starts.clear()

@@ -69,6 +69,22 @@ function cacheDomElements() {
     dom.latencyDisplay = document.getElementById('latency-display');
     dom.cameraPlaceholder = document.getElementById('camera-placeholder');
     dom.cameraContainer = document.getElementById('camera-container');
+    dom.enableDistraction = document.getElementById('enable-camera-distraction');
+    dom.enablePhysio = document.getElementById('enable-camera-physio');
+    dom.enableDemoMode = document.getElementById('enable-demo-mode');
+    dom.demoSamplesBtn = document.getElementById('btn-load-demo-samples');
+    dom.demoSamplesList = document.getElementById('demo-samples-list');
+    dom.handState = document.getElementById('metric-hand-state');
+    dom.handDuration = document.getElementById('metric-hand-duration');
+    dom.handLeft = document.getElementById('metric-hand-left');
+    dom.handRight = document.getElementById('metric-hand-right');
+    dom.handThreshold = document.getElementById('metric-hand-threshold');
+    dom.headDirection = document.getElementById('metric-head-direction');
+    dom.headTurnState = document.getElementById('metric-head-turn-state');
+    dom.headTurnThreshold = document.getElementById('metric-head-turn-threshold');
+    dom.bodyTurnState = document.getElementById('metric-body-turn-state');
+    dom.bodyTurnAngle = document.getElementById('metric-body-turn-angle');
+    dom.bodyTurnDuration = document.getElementById('metric-body-turn-duration');
 }
 
 // ===== 摄像头初始化 =====
@@ -89,6 +105,7 @@ async function enumerateDevices() {
         if (dom.deviceSelect) {
             if (videoDevices.length === 0) {
                 dom.deviceSelect.innerHTML = '<option value="">未检测到摄像头</option>';
+                loadDemoSamples(false);
             } else {
                 dom.deviceSelect.innerHTML = videoDevices.map((d, i) =>
                     `<option value="${d.deviceId}">${d.label || '摄像头 ' + (i + 1)}</option>`
@@ -309,6 +326,12 @@ async function sendFrame() {
         const formData = new FormData();
         formData.append('frame', blob, 'frame.jpg');
         formData.append('session_id', sessionId);
+        formData.append('enable_fatigue', 'true');
+        formData.append('enable_pose', 'true');
+        formData.append('enable_gaze', 'true');
+        formData.append('enable_distraction', dom.enableDistraction ? String(dom.enableDistraction.checked) : 'true');
+        formData.append('enable_physio', dom.enablePhysio ? String(dom.enablePhysio.checked) : 'false');
+        formData.append('demo_mode', dom.enableDemoMode ? String(dom.enableDemoMode.checked) : 'false');
 
         // 发送到服务器（带超时）
         inFlightController = new AbortController();
@@ -452,7 +475,10 @@ function updateCameraUI(data, latency) {
 
         const pitchAbs = Math.abs(data.head_pose.pitch || 0);
         dom.headPitch.className = 'metric-value ' + (pitchAbs > 15 ? 'danger' : 'success');
+        updateHeadTurnPanel(data.head_pose, data.alerts || []);
     }
+
+    updateHandPanel(data.distraction || {});
 
     // 视线
     if (data.gaze) {
@@ -464,10 +490,10 @@ function updateCameraUI(data, latency) {
     // 环境光照
     if (data.lighting) {
         const levelMap = {
-            'dark': { label: '🌙 暗光', cls: 'danger', desc: '(阈值已放宽)' },
-            'dim': { label: '🌆 昏暗', cls: 'warning', desc: '(阈值适度放宽)' },
-            'normal': { label: '☀️ 正常', cls: 'success', desc: '(默认阈值)' },
-            'bright': { label: '🔆 明亮', cls: 'success', desc: '(默认阈值)' },
+            'dark': { label: '暗光', cls: 'danger', desc: '(阈值已放宽)' },
+            'dim': { label: '昏暗', cls: 'warning', desc: '(阈值适度放宽)' },
+            'normal': { label: '正常', cls: 'success', desc: '(默认阈值)' },
+            'bright': { label: '明亮', cls: 'success', desc: '(默认阈值)' },
         };
         const info = levelMap[data.lighting.lighting_level] || { label: data.lighting.lighting_level, cls: '', desc: '' };
 
@@ -487,6 +513,88 @@ function updateCameraUI(data, latency) {
         dom.latencyDisplay.textContent = latency.toFixed(0) + 'ms';
         dom.fpsDisplay.textContent = actualFps.toFixed(0);
     }
+}
+
+function updateHandPanel(distraction) {
+    const status = distraction.hand_status || {};
+    updateBodyTurnPanel(distraction.body_turn_info || {}, Boolean(distraction.body_turn));
+    const state = status.state || 'unknown';
+    const stateInfo = {
+        both_on: { label: '双手在方向盘', cls: 'success' },
+        left_off: { label: '左手离把', cls: 'warning' },
+        right_off: { label: '右手离把', cls: 'warning' },
+        both_off: { label: '双手离把', cls: 'danger' },
+        unknown: { label: '等待手部关键点', cls: '' },
+    }[state] || { label: state, cls: '' };
+
+    if (dom.handState) {
+        dom.handState.textContent = stateInfo.label;
+        dom.handState.className = 'metric-value ' + stateInfo.cls;
+    }
+    if (dom.handDuration) {
+        dom.handDuration.textContent = (status.duration || 0).toFixed(1) + 's';
+    }
+    if (dom.handLeft) {
+        setStatusPill(dom.handLeft, status.left_on_wheel || status.left_in_roi, '左手在位', '左手离开');
+    }
+    if (dom.handRight) {
+        setStatusPill(dom.handRight, status.right_on_wheel || status.right_in_roi, '右手在位', '右手离开');
+    }
+    if (dom.handThreshold) {
+        const threshold = status.threshold_seconds || (state === 'both_off' ? 5 : state === 'left_off' || state === 'right_off' ? 8 : 0);
+        const modeLabel = status.demo_mode ? '演示' : '现实';
+        dom.handThreshold.textContent = threshold ? `${modeLabel}阈值 ${threshold.toFixed(1)}s` : '现实: 双手 5s / 单手 8s';
+    }
+}
+
+function updateBodyTurnPanel(bodyInfo, isActive) {
+    const candidate = Boolean(bodyInfo.candidate);
+    const angle = Math.max(Math.abs(bodyInfo.estimated_angle || 0), Math.abs(bodyInfo.shoulder_angle || 0));
+    if (dom.bodyTurnState) {
+        dom.bodyTurnState.textContent = isActive ? '已触发' : (candidate ? '持续计时中' : '未触发');
+        dom.bodyTurnState.className = 'metric-value ' + (isActive ? 'warning' : candidate ? 'warning' : 'success');
+    }
+    if (dom.bodyTurnAngle) {
+        dom.bodyTurnAngle.textContent = angle ? angle.toFixed(1) + '°' : '--';
+    }
+    if (dom.bodyTurnDuration) {
+        const duration = bodyInfo.duration || 0;
+        const threshold = bodyInfo.threshold_seconds || 2;
+        dom.bodyTurnDuration.textContent = `${duration.toFixed(1)}s / ${threshold.toFixed(0)}s`;
+    }
+}
+
+function updateHeadTurnPanel(headPose, alerts) {
+    const directionMap = {
+        forward: { label: '正视前方', cls: 'success' },
+        left: { label: '左看', cls: 'warning' },
+        right: { label: '右看', cls: 'warning' },
+        down: { label: '低头', cls: 'warning' },
+        up: { label: '抬头', cls: 'warning' },
+    };
+    const directionInfo = directionMap[headPose.direction] || { label: '未知', cls: '' };
+    const headTurnAlert = alerts.find(a => a.type === 'head_turn');
+    const turning = Boolean(headPose.head_turning);
+
+    if (dom.headDirection) {
+        dom.headDirection.textContent = directionInfo.label;
+        dom.headDirection.className = 'metric-value ' + (headTurnAlert?.severity || directionInfo.cls);
+    }
+    if (dom.headTurnState) {
+        dom.headTurnState.textContent = headTurnAlert ? '已触发' : (turning ? '持续计时中' : '未触发');
+        dom.headTurnState.className = 'metric-value ' + (headTurnAlert?.severity || (turning ? 'warning' : 'success'));
+    }
+    if (dom.headTurnThreshold) {
+        const yaw = headPose.head_turn_threshold || 35;
+        const duration = headPose.head_turn_duration_threshold || 2;
+        const modeLabel = headPose.demo_mode ? '演示' : '现实';
+        dom.headTurnThreshold.textContent = `${modeLabel}: Yaw > ${yaw.toFixed(0)}° 持续 ${duration.toFixed(1)}s`;
+    }
+}
+
+function setStatusPill(element, ok, okText, badText) {
+    element.textContent = ok ? okText : badText;
+    element.className = 'status-pill ' + (ok ? 'success' : 'warning');
 }
 
 // ===== 纯图形叠加绘制（检测画面禁止绘制任何文字） =====
@@ -548,7 +656,9 @@ function drawOverlay(overlay) {
     (overlay.eye_contours || []).forEach(points => drawPolyline(points, t, '#4dd0ff', true, 2));
     drawPolyline(overlay.mouth_contour || [], t, '#ffd166', true, 2);
     (overlay.object_boxes || []).forEach(box => drawBox(box.bbox, t, colorForSeverity(box.severity), 2, false));
-    if (overlay.wheel_roi) drawDashedBox(overlay.wheel_roi, t, '#ff4560');
+    if (overlay.virtual_wheel || overlay.wheel_roi) {
+        drawVirtualSteeringWheel(overlay.virtual_wheel, overlay.wheel_roi, overlay.wheel_state, t);
+    }
     drawPose(overlay, t);
     (overlay.head_pose_axes || []).forEach(axis => drawLine(axis.start, axis.end, t, axisColor(axis.axis), 2));
     if (overlay.gaze_arrow) drawArrow(overlay.gaze_arrow.start, overlay.gaze_arrow.end, t, '#ff9f1c', 3);
@@ -593,6 +703,84 @@ function drawDashedBox(bbox, t, color) {
     overlayCtx.lineWidth = 2;
     overlayCtx.setLineDash([10, 8]);
     overlayCtx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+    overlayCtx.restore();
+}
+
+function drawVirtualSteeringWheel(wheel, fallbackBbox, state, t) {
+    const severity = state?.severity || 'info';
+    const color = colorForSeverity(severity);
+    let center;
+    let radiusX;
+    let radiusY;
+    let bbox = fallbackBbox;
+
+    if (wheel && wheel.center && wheel.radius_x && wheel.radius_y) {
+        center = mapPoint(wheel.center, t);
+        radiusX = wheel.radius_x * t.scale;
+        radiusY = wheel.radius_y * t.scale;
+        bbox = wheel.bbox || fallbackBbox;
+    } else if (fallbackBbox) {
+        const [x1, y1] = mapPoint([fallbackBbox[0], fallbackBbox[1]], t);
+        const [x2, y2] = mapPoint([fallbackBbox[2], fallbackBbox[3]], t);
+        center = [(x1 + x2) / 2, (y1 + y2) / 2];
+        radiusX = Math.abs(x2 - x1) / 2;
+        radiusY = Math.abs(y2 - y1) / 2;
+    } else {
+        return;
+    }
+
+    overlayCtx.save();
+    overlayCtx.strokeStyle = color;
+    overlayCtx.fillStyle = color;
+    overlayCtx.lineWidth = 3;
+    overlayCtx.globalAlpha = 0.92;
+    overlayCtx.beginPath();
+    overlayCtx.ellipse(center[0], center[1], radiusX, radiusY, 0, 0, Math.PI * 2);
+    overlayCtx.stroke();
+
+    overlayCtx.globalAlpha = 0.18;
+    overlayCtx.lineWidth = Math.max(8, radiusY * 0.16);
+    overlayCtx.beginPath();
+    overlayCtx.ellipse(center[0], center[1], radiusX * 0.86, radiusY * 0.82, 0, 0, Math.PI * 2);
+    overlayCtx.stroke();
+
+    overlayCtx.globalAlpha = 0.8;
+    overlayCtx.lineWidth = 2;
+    [
+        [center[0], center[1], center[0] - radiusX * 0.72, center[1] + radiusY * 0.08],
+        [center[0], center[1], center[0] + radiusX * 0.72, center[1] + radiusY * 0.08],
+        [center[0], center[1], center[0], center[1] + radiusY * 0.78],
+    ].forEach(line => drawRawLine(line[0], line[1], line[2], line[3]));
+
+    overlayCtx.globalAlpha = 0.9;
+    overlayCtx.beginPath();
+    overlayCtx.arc(center[0], center[1], Math.max(8, radiusY * 0.16), 0, Math.PI * 2);
+    overlayCtx.fill();
+
+    drawGripZone(wheel?.grip_left, t, state?.left_on_wheel, color);
+    drawGripZone(wheel?.grip_right, t, state?.right_on_wheel, color);
+    overlayCtx.restore();
+
+    if (bbox) {
+        drawDashedBox(bbox, t, color);
+    }
+}
+
+function drawGripZone(grip, t, isOnWheel, baseColor) {
+    if (!grip || grip.length < 4) return;
+    const cx = grip[0];
+    const cy = grip[1];
+    const rx = Math.max(5, grip[2]);
+    const ry = Math.max(5, grip[3]);
+    const [x, y] = mapPoint([cx, cy], t);
+    overlayCtx.save();
+    overlayCtx.strokeStyle = isOnWheel ? '#22c55e' : '#ffb547';
+    overlayCtx.fillStyle = isOnWheel ? 'rgba(34,197,94,0.18)' : 'rgba(255,181,71,0.18)';
+    overlayCtx.lineWidth = 2;
+    overlayCtx.beginPath();
+    overlayCtx.ellipse(x, y, rx * t.scale, ry * t.scale, 0, 0, Math.PI * 2);
+    overlayCtx.fill();
+    overlayCtx.stroke();
     overlayCtx.restore();
 }
 
@@ -687,7 +875,7 @@ function updateAlertList(alerts) {
     const hasDanger = alerts.some(a => a.severity === 'danger');
     if (hasDanger) {
         dom.statusDot.className = 'live-dot';  // 红色闪烁
-        dom.statusText.textContent = '⚠ 告警';
+        dom.statusText.textContent = '告警';
     }
 
     dom.alertList.innerHTML = alerts.slice(0, 3).map(a => {
@@ -721,7 +909,43 @@ function showCameraError(message) {
                 <p style="color:var(--danger);font-weight:600;margin-bottom:8px;">摄像头启动失败</p>
                 <p style="color:var(--text-secondary);font-size:14px;">${message}</p>
                 <p style="color:var(--text-muted);font-size:12px;margin-top:12px;">请确保:<br>1. 已连接摄像头设备<br>2. 浏览器已授权摄像头权限<br>3. 使用 HTTPS 或 localhost 访问</p>
+                <div class="camera-error-actions">
+                    <a href="/#upload-section" class="btn btn-outline btn-sm">上传样例演示</a>
+                    <button id="btn-load-demo-samples-inline" type="button" class="btn btn-outline-secondary btn-sm">查看固定样例</button>
+                </div>
             </div>`;
+        const inlineSamplesBtn = document.getElementById('btn-load-demo-samples-inline');
+        inlineSamplesBtn?.addEventListener('click', () => loadDemoSamples(true));
+    }
+}
+
+async function loadDemoSamples(forceOpen = true) {
+    if (!dom.demoSamplesList) return;
+    if (dom.demoSamplesList.dataset.loaded === 'true' && !forceOpen) return;
+
+    try {
+        const resp = await fetch('/api/demo/samples');
+        if (!resp.ok) throw new Error('样例接口不可用');
+        const data = await resp.json();
+        const samples = data.samples || [];
+        if (samples.length === 0) {
+            dom.demoSamplesList.innerHTML = '<div class="demo-sample-empty">未找到固定样例，可直接从 dataset/val/images 选择图片上传。</div>';
+        } else {
+            dom.demoSamplesList.innerHTML = samples.map(sample => `
+                <a class="demo-sample-link" href="${sample.url}" target="_blank" rel="noreferrer">
+                    <i class="bi bi-file-image"></i>
+                    <span>${sample.name}</span>
+                </a>
+            `).join('');
+        }
+        dom.demoSamplesList.dataset.loaded = 'true';
+        if (forceOpen) {
+            dom.demoSamplesList.classList.add('open');
+            dom.demoSamplesList.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    } catch (error) {
+        dom.demoSamplesList.innerHTML = `<div class="demo-sample-empty">${error.message}</div>`;
+        dom.demoSamplesList.classList.add('open');
     }
 }
 
@@ -746,6 +970,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (isRunning) {
                 stopCamera();
                 setTimeout(startCamera, 500);
+            }
+        });
+    }
+    if (dom.demoSamplesBtn) {
+        dom.demoSamplesBtn.addEventListener('click', () => loadDemoSamples(true));
+    }
+    if (dom.enableDemoMode) {
+        dom.enableDemoMode.addEventListener('change', () => {
+            if (isRunning) {
+                updateCameraStatus('warning', '演示模式切换中...');
             }
         });
     }

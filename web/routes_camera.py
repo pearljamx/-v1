@@ -12,6 +12,7 @@ import numpy as np
 import cv2
 from flask import request, jsonify, render_template, current_app
 from . import bp
+from config import DEMO_MODE_DEFAULT
 from utils.lighting import compute_brightness, get_adaptive_thresholds
 
 
@@ -43,28 +44,51 @@ def _get_or_create_processor(session_id, form_data=None):
 
         if session_id not in _realtime_sessions:
             # 解析模块开关
-            # 注意：实时摄像头默认关闭 distraction（YOLO推理较慢）和 physio（需要长视频），
-            # 即使模型文件存在也不自动开启，以保障实时帧率。
-            # 用户可通过前端开关手动启用。
+            # 注意：本课程演示页默认启用 distraction，以展示方向盘、手部和转头检测；
+            # physio 需要长时间稳定面部 ROI，仍默认关闭以保障实时帧率。
+            # 用户可通过前端开关调整。
             enable_modules = {
                 'fatigue': True,
                 'pose': True,
                 'gaze': True,
-                'distraction': False,  # YOLO推理在CPU上较慢，默认关闭保障实时性
+                'distraction': True,
                 'physio': False,       # rPPG需要较长视频，默认关闭
+                'demo_mode': DEMO_MODE_DEFAULT,
             }
             if form_data:
                 enable_modules['fatigue'] = form_data.get('enable_fatigue', 'true').lower() == 'true'
                 enable_modules['pose'] = form_data.get('enable_pose', 'true').lower() == 'true'
                 enable_modules['gaze'] = form_data.get('enable_gaze', 'true').lower() == 'true'
-                enable_modules['distraction'] = form_data.get('enable_distraction', 'false').lower() == 'true'
+                enable_modules['distraction'] = form_data.get('enable_distraction', 'true').lower() == 'true'
                 enable_modules['physio'] = form_data.get('enable_physio', 'false').lower() == 'true'
+                enable_modules['demo_mode'] = form_data.get('demo_mode', 'false').lower() == 'true'
 
             from processors.realtime_processor import RealtimeProcessor
             _realtime_sessions[session_id] = {
                 'processor': RealtimeProcessor(enable_modules=enable_modules),
                 'last_active': time.time(),
+                'enable_modules': enable_modules,
             }
+        elif form_data:
+            current_modules = _realtime_sessions[session_id].get('enable_modules', {})
+            requested_modules = dict(current_modules)
+            requested_modules['fatigue'] = form_data.get('enable_fatigue', 'true').lower() == 'true'
+            requested_modules['pose'] = form_data.get('enable_pose', 'true').lower() == 'true'
+            requested_modules['gaze'] = form_data.get('enable_gaze', 'true').lower() == 'true'
+            requested_modules['distraction'] = form_data.get('enable_distraction', 'true').lower() == 'true'
+            requested_modules['physio'] = form_data.get('enable_physio', 'false').lower() == 'true'
+            requested_modules['demo_mode'] = form_data.get('demo_mode', 'false').lower() == 'true'
+            if requested_modules != current_modules:
+                try:
+                    _realtime_sessions[session_id]['processor'].reset()
+                except Exception:
+                    pass
+                from processors.realtime_processor import RealtimeProcessor
+                _realtime_sessions[session_id] = {
+                    'processor': RealtimeProcessor(enable_modules=requested_modules),
+                    'last_active': time.time(),
+                    'enable_modules': requested_modules,
+                }
 
         # 更新活跃时间
         _realtime_sessions[session_id]['last_active'] = time.time()

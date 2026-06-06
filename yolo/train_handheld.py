@@ -141,6 +141,13 @@ def quick_train():
     )
 
     print(f"快速训练完成，模型保存在: {results.save_dir}")
+    best_model_path = Path(results.save_dir) / 'weights' / 'best.pt'
+    if best_model_path.exists():
+        import shutil
+        dest_path = BASE_DIR / 'models_data' / 'yolo_handheld_quick.pt'
+        dest_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy(best_model_path, dest_path)
+        print(f"快速训练模型已复制到: {dest_path}")
     return results
 
 

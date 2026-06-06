@@ -15,3 +15,4 @@ from . import routes_upload
 from . import routes_detect
 from . import routes_api
 from . import routes_camera
+from . import routes_demo

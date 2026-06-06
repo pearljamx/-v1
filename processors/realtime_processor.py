@@ -35,16 +35,17 @@ class RealtimeProcessor:
         参数:
             enable_modules: dict, 控制启用的检测模块
                 默认: {'fatigue': True, 'pose': True, 'gaze': True,
-                       'distraction': False, 'physio': False}
-                注意: distraction和physio默认关闭以提升实时性能
+                       'distraction': True, 'physio': False, 'demo_mode': False}
+                注意: physio默认关闭以提升实时性能
         """
         if enable_modules is None:
             enable_modules = {
                 'fatigue': True,
                 'pose': True,
                 'gaze': True,
-                'distraction': False,  # YOLO推理较慢, 默认关闭
+                'distraction': True,   # 课程演示默认启用方向盘/手部/转身检测
                 'physio': False,       # rPPG需要长视频, 默认关闭
+                'demo_mode': False,
             }
 
         self.enable_modules = enable_modules

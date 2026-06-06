@@ -2,6 +2,7 @@
 # =========================================
 
 # Web框架
+setuptools<81
 Flask>=3.0.0
 Flask-Cors>=4.0.0
 Werkzeug>=3.0.0
@@ -22,11 +23,15 @@ torchvision>=0.15.0
 scikit-learn>=1.3.0
 
 # 人脸检测与识别 (dlib备选后端)
-# dlib-bin 提供Windows预编译wheel，避免CMake编译问题
+# dlib-bin 提供预编译 dlib 模块，避免本机源码编译失败。
+# vendor/dlib_metadata_shim 只提供 pip 依赖解析所需的 dlib 元数据；
+# 实际 import dlib 仍来自 dlib-bin。
 dlib-bin>=19.24.0
+./vendor/dlib_metadata_shim
 face-recognition>=1.3.0
 face-recognition-models>=0.3.0
 
 # 外部公开数据集下载/导入
 roboflow>=1.1.0
 PyYAML>=6.0.0
+polars>=1.0.0

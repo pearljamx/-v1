@@ -16,7 +16,10 @@ from config import *
 class HeadPoseEstimator:
     """头部姿态估计器，使用 PnP 求解 3D 旋转并检测点头/低头异常。"""
 
-    def __init__(self, camera_matrix=None, dist_coeffs=None):
+    def __init__(self, camera_matrix=None, dist_coeffs=None, demo_mode=False):
+        self.demo_mode = bool(demo_mode)
+        self.head_turn_duration = DEMO_HEAD_TURN_DURATION if self.demo_mode else HEAD_TURN_DURATION
+
         # 使用config中的相机矩阵或默认值
         self.camera_matrix = camera_matrix or np.array(CAMERA_MATRIX, dtype=np.float64)
         self.dist_coeffs = dist_coeffs or np.array(DIST_COEFFS, dtype=np.float64)
@@ -35,6 +38,8 @@ class HeadPoseEstimator:
         self.pitch_history = deque(maxlen=30)
         # 点头开始时间
         self.nodding_start = None
+        # 转头开始时间
+        self.head_turn_start = None
 
     # ------------------------------------------------------------------
     # 姿态估计
@@ -162,9 +167,54 @@ class HeadPoseEstimator:
         return None
 
     # ------------------------------------------------------------------
+    # 转头检测
+    # ------------------------------------------------------------------
+    def check_head_turn(self, yaw: float, timestamp: float) -> Optional[dict]:
+        """
+        检测持续转头分心。
+
+        正常驾驶允许短暂扫视后视镜或侧方，因此只在 yaw 明显偏离并持续
+        HEAD_TURN_DURATION 后报警。
+        """
+        yaw_abs = abs(float(yaw))
+        is_turning = yaw_abs > HEAD_TURN_YAW_THRESHOLD
+
+        if is_turning:
+            if self.head_turn_start is None:
+                self.head_turn_start = timestamp
+
+            elapsed = timestamp - self.head_turn_start
+            if elapsed >= self.head_turn_duration:
+                direction = "右转头" if yaw > 0 else "左转头"
+                severity = "danger" if yaw_abs >= HEAD_TURN_DANGER_YAW else "warning"
+                return {
+                    'source': 'head_pose',
+                    'type': 'head_turn',
+                    'severity': severity,
+                    'timestamp': timestamp,
+                    'message': (
+                        f"驾驶员持续{direction}，偏航角 {yaw:.1f}°，"
+                        f"已持续 {elapsed:.1f}s"
+                    ),
+                    'metadata': {
+                        'yaw': float(yaw),
+                        'duration': float(elapsed),
+                        'threshold_yaw': float(HEAD_TURN_YAW_THRESHOLD),
+                        'threshold_seconds': float(self.head_turn_duration),
+                        'demo_mode': bool(self.demo_mode),
+                        'direction': direction,
+                    },
+                }
+        else:
+            self.head_turn_start = None
+
+        return None
+
+    # ------------------------------------------------------------------
     # 重置
     # ------------------------------------------------------------------
     def reset(self):
         """重置所有内部状态（历史记录、检测标志）。"""
         self.pitch_history.clear()
         self.nodding_start = None
+        self.head_turn_start = None
