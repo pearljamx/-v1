@@ -856,9 +856,10 @@ h1, h2, h3, h4, h5, h6 {
    15. 摄像头页面
    ============================================================ */
 .camera-dashboard {
-  max-width: 1440px;
+  width: min(1840px, calc(100% - 48px));
+  max-width: none;
   margin: 0 auto;
-  padding: 24px 20px 44px;
+  padding: 24px 0 44px;
 }
 .camera-hero {
   display: flex;
@@ -959,7 +960,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 .camera-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.48fr);
+  grid-template-columns: minmax(220px, 300px) minmax(640px, 1fr) minmax(300px, 400px);
   gap: 18px;
   align-items: start;
 }
@@ -971,11 +972,7 @@ h1, h2, h3, h4, h5, h6 {
   min-width: 0;
 }
 .camera-main-column {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(250px, 0.45fr);
-  align-items: start;
-  gap: 14px;
-  min-width: 0;
+  display: contents;
 }
 .camera-stage-card,
 .status-card {
@@ -985,9 +982,14 @@ h1, h2, h3, h4, h5, h6 {
   box-shadow: var(--shadow-md);
 }
 .camera-stage-card {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: stretch;
   padding: 16px;
 }
 .camera-insight-grid {
+  grid-column: 1;
+  grid-row: 1;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   grid-template-areas:
@@ -1073,9 +1075,9 @@ h1, h2, h3, h4, h5, h6 {
   overflow: hidden;
   border: 2px solid var(--border-card);
   background: #000;
-  aspect-ratio: 16/9;
-  max-height: 56vh;
-  min-height: 280px;
+  aspect-ratio: 4/3;
+  max-height: 72vh;
+  min-height: 420px;
 }
 .camera-container img,
 .camera-video {
@@ -1159,6 +1161,8 @@ h1, h2, h3, h4, h5, h6 {
 
 /* 实时度量面板 */
 .camera-side-panel {
+  grid-column: 3;
+  grid-row: 1;
   display: grid;
   gap: 14px;
   align-self: start;
@@ -1447,6 +1451,29 @@ h1, h2, h3, h4, h5, h6 {
 /* ============================================================
    19. 响应式
    ============================================================ */
+@media (max-width: 1279.98px) {
+  .camera-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 0.52fr);
+  }
+  .camera-main-column {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(250px, 0.45fr);
+    align-items: start;
+    gap: 14px;
+    min-width: 0;
+  }
+  .camera-stage-card,
+  .camera-insight-grid,
+  .camera-side-panel {
+    grid-column: auto;
+    grid-row: auto;
+  }
+  .camera-container {
+    aspect-ratio: 16/10;
+    max-height: 62vh;
+    min-height: 320px;
+  }
+}
 @media (max-width: 991.98px) {
   .hide-mobile { display: none !important; }
   .camera-hero {
@@ -1460,6 +1487,7 @@ h1, h2, h3, h4, h5, h6 {
     grid-template-columns: 1fr;
   }
   .camera-main-column {
+    display: grid;
     grid-template-columns: minmax(0, 1fr);
   }
   .camera-insight-grid {
@@ -1491,7 +1519,10 @@ h1, h2, h3, h4, h5, h6 {
   .section-title { font-size: 24px; }
   .stat-card .stat-value { font-size: 2rem; }
   .feature-card { padding: 24px 16px; }
-  .camera-dashboard { padding-inline: 12px; }
+  .camera-dashboard {
+    width: calc(100% - 24px);
+    padding-inline: 0;
+  }
   .camera-hero-metrics { grid-template-columns: 1fr; }
   .camera-control-card { align-items: stretch; }
   .camera-actions { width: 100%; }
