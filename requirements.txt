@@ -35,3 +35,4 @@ face-recognition-models>=0.3.0
 roboflow>=1.1.0
 PyYAML>=6.0.0
 polars>=1.0.0
+requests>=2.31.0

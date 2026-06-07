@@ -60,6 +60,9 @@ function cacheDomElements() {
     dom.headPitch = document.getElementById('metric-head-pitch');
     dom.headYaw = document.getElementById('metric-head-yaw');
     dom.gazeAngle = document.getElementById('metric-gaze-angle');
+    dom.driverClass = document.getElementById('metric-driver-class');
+    dom.driverClassSource = document.getElementById('metric-driver-class-source');
+    dom.driverConfidenceBar = document.getElementById('metric-driver-confidence-bar');
     dom.lightingLevel = document.getElementById('metric-lighting-level');
     dom.brightnessValue = document.getElementById('metric-brightness-value');
     dom.adaptiveEar = document.getElementById('metric-adaptive-ear');
@@ -479,6 +482,7 @@ function updateCameraUI(data, latency) {
     }
 
     updateHandPanel(data.distraction || {});
+    updateDriverClassifierPanel(data.distraction || {});
 
     // 视线
     if (data.gaze) {
@@ -512,6 +516,37 @@ function updateCameraUI(data, latency) {
         const actualFps = calculateActualFps(performance.now());
         dom.latencyDisplay.textContent = latency.toFixed(0) + 'ms';
         dom.fpsDisplay.textContent = actualFps.toFixed(0);
+    }
+}
+
+function updateDriverClassifierPanel(distraction) {
+    const state = distraction.driver_state || {};
+    const confidence = Number(state.confidence || 0);
+    if (dom.driverClass) {
+        if (state.class_name || state.class) {
+            const labelMap = {
+                normal: '正常驾驶',
+                phone: '手机分心',
+                drinking: '饮水分心',
+                turning: '转身/交谈',
+                drowsy: '疲劳状态',
+                secondary_task: '分心操作',
+            };
+            const cls = state.class_name || state.class;
+            dom.driverClass.textContent = labelMap[cls] || cls;
+            dom.driverClass.className = 'metric-value ' + (state.class_id ? 'warning' : 'success');
+        } else {
+            dom.driverClass.textContent = '--';
+            dom.driverClass.className = 'metric-value';
+        }
+    }
+    if (dom.driverClassSource) {
+        dom.driverClassSource.textContent = state.raw_class ?
+            `${state.raw_class} / ${(confidence * 100).toFixed(1)}%` :
+            '等待 Mendeley 分类模型输出';
+    }
+    if (dom.driverConfidenceBar) {
+        dom.driverConfidenceBar.style.width = Math.max(0, Math.min(100, confidence * 100)).toFixed(1) + '%';
     }
 }
 

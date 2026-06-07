@@ -47,6 +47,15 @@ DATASETS = [
         output_model="models_data/yolo_driver_state.pt",
     ),
     DatasetEntry(
+        key="mendeley-distraction-cls",
+        title="Mendeley Data - Novel Driver Distractions Dataset With Low Lighting Support",
+        source="https://data.mendeley.com/datasets/ykmr99nrsg/2",
+        license_note="CC BY-NC 3.0；页面 Download All 后用 --zip 导入为 YOLO classification 目录。",
+        prepare_command="python -m yolo.mendeley_distraction_dataset --zip /path/to/mendeley.zip",
+        train_command="python -m yolo.train_mendeley_distraction_cls --quick",
+        output_model="models_data/driver_distraction_cls.pt",
+    ),
+    DatasetEntry(
         key="drowsiness-cls",
         title="Hugging Face - n7i5x9/driver-drowsiness-dataset",
         source="https://huggingface.co/datasets/n7i5x9/driver-drowsiness-dataset",
@@ -93,8 +102,10 @@ def dry_run() -> int:
     for script in [
         "yolo/roboflow_driver_dataset.py",
         "yolo/hf_drowsiness_dataset.py",
+        "yolo/mendeley_distraction_dataset.py",
         "yolo/train_driver_state.py",
         "yolo/train_drowsiness_cls.py",
+        "yolo/train_mendeley_distraction_cls.py",
         "yolo/train_handheld.py",
     ]:
         ok, detail = check_path(script)
@@ -104,6 +115,7 @@ def dry_run() -> int:
         "dataset/data.yaml",
         "dataset/roboflow_driver_state/data.yaml",
         "datasets/hf_driver_drowsiness_yolo_cls",
+        "datasets/mendeley_driver_distraction_yolo_cls",
     ]:
         ok, detail = check_path(data_config)
         checks.append(("数据配置", ok, detail))
@@ -152,6 +164,15 @@ def run_training(target: str, quick: bool, prepare: bool) -> int:
             if code != 0:
                 return code
         cmd = [PYTHON, "-m", "yolo.train_drowsiness_cls"]
+    elif target == "mendeley-distraction-cls":
+        if prepare:
+            print(
+                "Mendeley API requires browser authorization in this environment. "
+                "Download the zip from the dataset page, then run "
+                "python -m yolo.mendeley_distraction_dataset --zip <zip>."
+            )
+            return 2
+        cmd = [PYTHON, "-m", "yolo.train_mendeley_distraction_cls"]
     elif target == "handheld":
         cmd = [PYTHON, "-m", "yolo.train_handheld"]
     else:

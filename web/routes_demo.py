@@ -57,10 +57,19 @@ def demo_sample_file(relative_path):
         (root / "dataset" / split / "images").resolve()
         for split in ("train", "val", "test")
     ]
-    if not any(str(target).startswith(str(allowed) + "/") for allowed in allowed_roots):
+    if not any(_is_relative_to(target, allowed) for allowed in allowed_roots):
         abort(404)
     if target.suffix.lower() not in {".jpg", ".jpeg", ".png", ".bmp", ".webp", ".mp4", ".avi", ".mov", ".webm"}:
         abort(404)
     if not target.exists():
         abort(404)
     return send_from_directory(str(target.parent), target.name)
+
+
+def _is_relative_to(path: Path, root: Path) -> bool:
+    """Windows-safe equivalent of Path.is_relative_to for the demo allowlist."""
+    try:
+        path.relative_to(root)
+        return True
+    except ValueError:
+        return False

@@ -19,13 +19,15 @@ import numpy as np
 from ultralytics import YOLO
 
 from config import (
-    YOLO_HANDHELD_MODEL, YOLO_DRIVER_STATE_MODEL, YOLO_STEERING_HAND_MODEL,
+    YOLO_HANDHELD_MODEL, YOLO_DRIVER_STATE_MODEL, YOLO_DRIVER_CLASSIFIER_MODEL,
+    YOLO_STEERING_HAND_MODEL,
     YOLO_POSE_MODEL, HAND_OFF_WHEEL_DURATION, SINGLE_HAND_OFF_WHEEL_DURATION,
     DEMO_HAND_OFF_WHEEL_DURATION, DEMO_SINGLE_HAND_OFF_WHEEL_DURATION,
     HAND_KEYPOINT_CONFIDENCE, VIRTUAL_WHEEL_CENTER, VIRTUAL_WHEEL_RADIUS,
     VIRTUAL_WHEEL_GRIP_TOLERANCE, SHOULDER_YAW_THRESHOLD, BODY_TURN_ANGLE,
     BODY_TURN_DURATION, DEMO_BODY_TURN_DURATION,
-    YOLO_OBJECT_CONFIDENCE, YOLO_OBJECT_CONFIRM_DURATION
+    YOLO_OBJECT_CONFIDENCE, YOLO_OBJECT_CONFIRM_DURATION,
+    YOLO_CLASSIFIER_CONFIDENCE
 )
 
 logger = logging.getLogger(__name__)
@@ -48,6 +50,7 @@ HANDHELD_CLASSES = {
     5: "eating",
     6: "turning",
     7: "drowsy",
+    8: "secondary_task",
 }
 
 DRIVER_STATE_LABELS = {
@@ -81,8 +84,48 @@ DRIVER_STATE_LABELS = {
     "normal": 0,
 }
 
+DRIVER_CLASSIFIER_LABELS = {
+    "safe driving": 0,
+    "safe_driving": 0,
+    "normal": 0,
+    "c0": 0,
+    "texting right": 1,
+    "texting_right": 1,
+    "text right": 1,
+    "c1": 1,
+    "phone right": 1,
+    "phone_right": 1,
+    "calling right": 1,
+    "c2": 1,
+    "texting left": 1,
+    "texting_left": 1,
+    "text left": 1,
+    "c3": 1,
+    "phone left": 1,
+    "phone_left": 1,
+    "calling left": 1,
+    "c4": 1,
+    "adjusting radio": 8,
+    "adjusting_radio": 8,
+    "radio": 8,
+    "c5": 8,
+    "drinking": 3,
+    "c6": 3,
+    "reaching behind": 6,
+    "reaching_behind": 6,
+    "c7": 6,
+    "hair makeup": 8,
+    "hair_makeup": 8,
+    "hair or makeup": 8,
+    "c8": 8,
+    "talking to passenger": 6,
+    "talking_to_passenger": 6,
+    "passenger": 6,
+    "c9": 6,
+}
+
 # 需要触发告警的类别 ID（排除 "normal"）
-ALERT_CLASS_IDS = {1, 2, 3, 4, 5, 6, 7}
+ALERT_CLASS_IDS = {1, 2, 3, 4, 5, 6, 7, 8}
 
 # 类别 → 告警类型映射
 CLASS_ALERT_TYPE = {
@@ -93,6 +136,7 @@ CLASS_ALERT_TYPE = {
     5: "eating",
     6: "body_turn",
     7: "drowsy",
+    8: "secondary_task",
 }
 
 # COCO 姿态关键点索引（仅列出本模块用到的）
@@ -147,6 +191,7 @@ class DistractionDetector:
         # --- 模型 ---
         self.handheld_model = None
         self.driver_state_model = None
+        self.driver_classifier_model = None
         self.steering_hand_model = None
         self.pose_model = None
         self._init_models()
@@ -178,6 +223,7 @@ class DistractionDetector:
     def _init_models(self):
         """初始化 YOLO 模型, 任一模型文件不存在时优雅降级并记录警告。"""
         self._try_load_driver_state()
+        self._try_load_driver_classifier()
         self._try_load_steering_hand()
         self._try_load_handheld()
         self._try_load_pose()
@@ -188,6 +234,14 @@ class DistractionDetector:
             YOLO_DRIVER_STATE_MODEL,
             "驾驶状态检测模型",
             "外部数据集模型不可用，将回退到手持物检测模型。",
+        )
+
+    def _try_load_driver_classifier(self):
+        """尝试加载真实整帧驾驶分心分类模型。"""
+        self.driver_classifier_model = _load_cached_yolo_model(
+            YOLO_DRIVER_CLASSIFIER_MODEL,
+            "驾驶分心分类模型",
+            "Mendeley 整帧分类模型不可用，将仅使用检测模型和姿态规则。",
         )
 
     def _try_load_handheld(self):
@@ -230,6 +284,11 @@ class DistractionDetector:
         return self.steering_hand_model is not None
 
     @property
+    def driver_classifier_available(self) -> bool:
+        """整帧驾驶分心分类模型是否可用。"""
+        return self.driver_classifier_model is not None
+
+    @property
     def pose_available(self) -> bool:
         """姿态估计是否可用。"""
         return self.pose_model is not None
@@ -268,6 +327,46 @@ class DistractionDetector:
                 self.handheld_model, image, source="handheld"
             ))
         return detected
+
+    def classify_driver_state(self, image):
+        """Run whole-frame driver-distraction classification if available."""
+        if not self.driver_classifier_available:
+            return {}
+        try:
+            results = self.driver_classifier_model(image, verbose=False)
+        except Exception as e:
+            logger.error("驾驶分心分类推理失败: %s", e)
+            return {}
+
+        if not results:
+            return {}
+        probs = getattr(results[0], "probs", None)
+        if probs is None:
+            return {}
+        try:
+            data = probs.data.cpu().numpy() if hasattr(probs.data, "cpu") else np.array(probs.data)
+        except Exception:
+            return {}
+        if data.size == 0:
+            return {}
+
+        raw_id = int(np.argmax(data))
+        confidence = float(data[raw_id])
+        names = getattr(self.driver_classifier_model, "names", {})
+        raw_name = names.get(raw_id, str(raw_id)) if isinstance(names, dict) else (
+            names[raw_id] if isinstance(names, (list, tuple)) and raw_id < len(names) else str(raw_id)
+        )
+        class_name, internal_id = self._normalize_classifier_class(raw_name)
+        return {
+            "class": class_name,
+            "class_name": class_name,
+            "raw_class": str(raw_name),
+            "raw_class_id": raw_id,
+            "class_id": int(internal_id),
+            "confidence": confidence,
+            "source": "driver_classifier",
+            "model": "driver_distraction_cls",
+        }
 
     def _detect_with_model(self, model, image, source="handheld"):
         """用指定 YOLO 模型检测并归一化为内部类别。"""
@@ -313,6 +412,15 @@ class DistractionDetector:
 
         key = str(raw_name).lower().replace("_", " ").replace("-", " ").strip()
         internal_id = DRIVER_STATE_LABELS.get(key, int(cls_id))
+        return HANDHELD_CLASSES.get(internal_id, key), internal_id
+
+    @staticmethod
+    def _normalize_classifier_class(raw_name):
+        key = str(raw_name).lower().replace("_", " ").replace("-", " ").strip()
+        internal_id = DRIVER_CLASSIFIER_LABELS.get(key)
+        if internal_id is None:
+            compact = key.replace(" ", "_")
+            internal_id = DRIVER_CLASSIFIER_LABELS.get(compact, 0)
         return HANDHELD_CLASSES.get(internal_id, key), internal_id
 
     def _confirm_object_alert(self, alert_type, timestamp):
@@ -673,6 +781,7 @@ class DistractionDetector:
                 5: "检测到饮食行为",
                 6: "检测到转身取物",
                 7: "检测到疲劳/睡眠状态",
+                8: "检测到分心操作",
             }
             message = class_labels.get(cls_id, f"检测到分心行为: {obj['class']}")
 
@@ -689,6 +798,36 @@ class DistractionDetector:
                     'duration': duration,
                 },
             })
+
+        driver_state = self.classify_driver_state(image)
+        if driver_state:
+            cls_id = int(driver_state.get("class_id", 0))
+            confidence = float(driver_state.get("confidence", 0.0))
+            if cls_id in ALERT_CLASS_IDS and confidence >= YOLO_CLASSIFIER_CONFIDENCE:
+                alert_type = CLASS_ALERT_TYPE.get(cls_id, "driver_state")
+                confirmation_key = f"classifier:{alert_type}"
+                seen_alert_types.add(confirmation_key)
+                confirmed, duration = self._confirm_object_alert(confirmation_key, timestamp)
+                if confirmed:
+                    class_labels = {
+                        1: "分类模型判定正在使用手机",
+                        3: "分类模型判定正在饮水",
+                        6: "分类模型判定存在转身/交谈分心",
+                        8: "分类模型判定存在分心操作",
+                    }
+                    alerts.append({
+                        'source': 'driver_classifier',
+                        'type': alert_type,
+                        'severity': 'danger' if cls_id == 1 else 'warning',
+                        'timestamp': timestamp,
+                        'message': class_labels.get(cls_id, f"分类模型判定异常状态: {driver_state.get('raw_class')}"),
+                        'metadata': {
+                            'class': driver_state.get('class'),
+                            'raw_class': driver_state.get('raw_class'),
+                            'confidence': confidence,
+                            'duration': duration,
+                        },
+                    })
 
         for alert_type in list(self.object_confirm_starts.keys()):
             if alert_type not in seen_alert_types:
@@ -752,6 +891,7 @@ class DistractionDetector:
         return {
             'alerts': alerts,
             'objects': objects,
+            'driver_state': driver_state,
             'hands_off_wheel': hands_off,
             'hand_status': hand_status,
             'body_turn': body_turn,

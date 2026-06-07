@@ -151,6 +151,7 @@ class FramePipeline:
                     if dist_result:
                         result['distraction'] = {
                             'objects': dist_result.get('objects', []),
+                            'driver_state': dist_result.get('driver_state', {}),
                             'hands_off_wheel': dist_result.get('hands_off_wheel', False),
                             'hand_status': dist_result.get('hand_status', {}),
                             'body_turn': dist_result.get('body_turn', False),
@@ -274,6 +275,7 @@ class FramePipeline:
                 if dist_result:
                     result['distraction'] = {
                         'objects': dist_result.get('objects', []),
+                        'driver_state': dist_result.get('driver_state', {}),
                         'hands_off_wheel': dist_result.get('hands_off_wheel', False),
                         'hand_status': dist_result.get('hand_status', {}),
                         'body_turn': dist_result.get('body_turn', False),

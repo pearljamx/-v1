@@ -67,6 +67,7 @@ pip install face-recognition --no-deps
 
 - `models_data/yolo_handheld.pt`：手机、吸烟、饮水、手离方向盘检测模型
 - `models_data/yolo_driver_state.pt`：外部公开数据集训练的驾驶状态检测模型
+- `models_data/driver_distraction_cls.pt`：Mendeley 真实驾驶分心图片数据集训练的整帧分类模型
 - `models_data/yolo_steering_hand.pt`：可选方向盘/手部真实数据集检测模型
 - `models_data/yolov8n-pose.pt`：人体姿态模型
 - `models_data/face_landmarker.task`：MediaPipe 面部关键点模型
@@ -74,7 +75,7 @@ pip install face-recognition --no-deps
 - `models_data/bp_lstm.pt`：血压趋势预测模型
 
 模型权重、数据库、上传文件和训练输出默认由 `.gitignore` 排除。交付给别人运行时，需要单独确认 `models_data/` 中必要模型已随包提供。
-其中 `models_data/yolo_driver_state.pt` 和 `models_data/yolo_drowsiness_cls.pt`
+其中 `models_data/yolo_driver_state.pt`、`models_data/driver_distraction_cls.pt` 和 `models_data/yolo_drowsiness_cls.pt`
 是课程训练证明模型，最终课程交付包必须包含这两个文件，不能因为它们被 `.gitignore`
 排除而漏打包。
 
@@ -129,6 +130,30 @@ python -m yolo.train_driver_state
 ```
 
 训练完成后最佳权重会复制为 `models_data/yolo_driver_state.pt`。如果该模型不存在，系统会继续使用 `models_data/yolo_handheld.pt` 作为 fallback。
+无 CUDA 的机器建议先运行 `--quick` 验证数据格式和训练链路；完整训练可去掉 `--quick`，但 CPU 训练耗时会明显增加。
+
+### Mendeley 驾驶分心整帧分类数据集
+
+为了补充分心行为的整帧分类判断，可使用 Mendeley Data 的真实图片数据集
+`Novel Driver Distractions Dataset With Low Lighting Support`：
+
+```text
+https://data.mendeley.com/datasets/ykmr99nrsg/2
+```
+
+该数据集为 10 类驾驶分心图片数据，包含安全驾驶、左右手打电话/发短信、
+调收音机、饮水、回头取物、整理头发/化妆、与乘客交谈等类别，页面标注
+许可证为 CC BY-NC 3.0。当前环境下 Mendeley 匿名 API 下载会返回未授权，
+因此稳定流程是先在网页点击 Download All 获取 zip，再导入：
+
+```bash
+python -m yolo.mendeley_distraction_dataset --zip /path/to/mendeley.zip
+python -m yolo.train_mendeley_distraction_cls --quick
+```
+
+完整训练可去掉 `--quick`。训练完成后最佳权重会复制为
+`models_data/driver_distraction_cls.pt`，运行时会与 Roboflow YOLO 检测模型并行：
+YOLO 检测模型负责目标框和局部告警，Mendeley 分类模型负责整帧驾驶行为分类。
 
 如果暂时没有 Roboflow API key，也可以使用 Hugging Face 公开真实数据集
 `n7i5x9/driver-drowsiness-dataset` 的 validation 分片训练 YOLOv8 驾驶疲劳二分类模型：
@@ -250,9 +275,10 @@ python scripts/acceptance_check.py
 和现有 unittest，输出 `[PASS]`、`[WARN]`、`[FAIL]` 状态；出现失败时返回非 0
 退出码，便于答辩前快速判断交付状态。
 
-两个 YOLO 模型文件的证明意义：
+三个真实数据模型文件的证明意义：
 
 - `models_data/yolo_driver_state.pt`：使用驾驶状态目标检测数据集训练得到，用于证明外部数据集上的 YOLO 检测训练流程。
+- `models_data/driver_distraction_cls.pt`：使用 Mendeley 驾驶分心图片数据集训练得到，用于证明整帧驾驶行为分类流程。
 - `models_data/yolo_drowsiness_cls.pt`：使用 Hugging Face 公开真实数据集训练得到，用于证明驾驶疲劳二分类 YOLO 训练流程。
 
 演示时可依次展示：

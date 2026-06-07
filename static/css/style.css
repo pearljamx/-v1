@@ -8,29 +8,29 @@
    ============================================================ */
 :root {
   /* 品牌色 */
-  --brand: #6C47FF;
-  --brand-hover: #5A35E0;
-  --brand-light: rgba(108, 71, 255, 0.15);
-  --brand-glow: rgba(108, 71, 255, 0.3);
-  --brand-gradient-1: #6C47FF;
+  --brand: #20D6FF;
+  --brand-hover: #7DEBFF;
+  --brand-light: rgba(32, 214, 255, 0.14);
+  --brand-glow: rgba(32, 214, 255, 0.28);
+  --brand-gradient-1: #20D6FF;
   --brand-gradient-2: #00D4AA;
   --brand-teal: #00D4AA;
 
   /* 背景 */
-  --bg-deep: #0A0A1A;
-  --bg-card: #12122A;
-  --bg-elevated: #1A1A3E;
-  --bg-nav: rgba(10, 10, 26, 0.85);
+  --bg-deep: #05080D;
+  --bg-card: #0D151D;
+  --bg-elevated: #14212C;
+  --bg-nav: rgba(5, 8, 13, 0.88);
 
   /* 边框 */
-  --border-subtle: rgba(108, 71, 255, 0.1);
-  --border-card: rgba(108, 71, 255, 0.12);
-  --border-hover: rgba(108, 71, 255, 0.25);
+  --border-subtle: rgba(32, 214, 255, 0.12);
+  --border-card: rgba(32, 214, 255, 0.16);
+  --border-hover: rgba(32, 214, 255, 0.34);
 
   /* 文字 */
-  --text-primary: #F0F0FF;
-  --text-secondary: #8888AA;
-  --text-muted: #5A5A7A;
+  --text-primary: #EDF8FF;
+  --text-secondary: #91A9B8;
+  --text-muted: #5E7482;
 
   /* 功能色 */
   --danger: #FF4560;
@@ -48,9 +48,9 @@
   /* 阴影 */
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
   --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.5);
-  --shadow-lg: 0 12px 40px rgba(108, 71, 255, 0.15);
-  --shadow-glow: 0 0 30px rgba(108, 71, 255, 0.25);
-  --shadow-btn-hover: 0 4px 20px rgba(108, 71, 255, 0.4);
+  --shadow-lg: 0 12px 40px rgba(32, 214, 255, 0.13);
+  --shadow-glow: 0 0 30px rgba(32, 214, 255, 0.22);
+  --shadow-btn-hover: 0 4px 20px rgba(32, 214, 255, 0.36);
 
   /* 动画 */
   --ease-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -58,7 +58,8 @@
   --ease-slow: 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 
   /* 字体 */
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+  --font-sans: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+  --font-display: 'Rajdhani', 'Noto Sans SC', sans-serif;
   --font-mono: 'JetBrains Mono', 'Consolas', 'Monaco', monospace;
 }
 
@@ -70,12 +71,16 @@
 html { scroll-behavior: smooth; }
 
 body {
+  margin: 0;
   font-family: var(--font-sans);
   font-size: 16px;
   font-weight: 400;
   line-height: 1.7;
   color: var(--text-secondary);
-  background-color: var(--bg-deep);
+  background:
+    linear-gradient(180deg, rgba(5, 8, 13, 0.18), #05080d 780px),
+    url("../img/hud-cockpit.png") top center / min(1600px, 140vw) auto no-repeat,
+    var(--bg-deep);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
@@ -83,7 +88,7 @@ body {
 }
 
 ::selection {
-  background: rgba(108, 71, 255, 0.35);
+  background: rgba(32, 214, 255, 0.32);
   color: var(--text-primary);
 }
 
@@ -104,17 +109,18 @@ a:hover { color: var(--brand-hover); }
    3. 排版
    ============================================================ */
 h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
   color: var(--text-primary);
   font-weight: 700;
   line-height: 1.2;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
 }
 
 .display-title {
   font-size: clamp(36px, 5vw, 56px);
   font-weight: 800;
   line-height: 1.1;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
 }
 
 .section-title {
@@ -203,7 +209,7 @@ h1, h2, h3, h4, h5, h6 {
 .navbar-glass .nav-link-item:hover,
 .navbar-glass .nav-link-item.active {
   color: var(--text-primary);
-  background: rgba(108, 71, 255, 0.08);
+  background: rgba(32, 214, 255, 0.10);
 }
 .navbar-glass .nav-link-item .bi { margin-right: 4px; }
 
@@ -231,7 +237,7 @@ h1, h2, h3, h4, h5, h6 {
   .navbar-glass { padding: 0 16px; }
   .navbar-glass .nav-links { gap: 0; }
   .navbar-glass .nav-link-item { padding: 6px 10px; font-size: 13px; }
-  .navbar-glass .nav-cta { padding: 6px 14px; font-size: 13px; }
+  .navbar-glass .nav-cta { display: none; }
 }
 
 /* ============================================================
@@ -243,7 +249,7 @@ h1, h2, h3, h4, h5, h6 {
   text-align: center;
   overflow: hidden;
   background:
-    radial-gradient(ellipse 80% 60% at 50% 0%, rgba(108, 71, 255, 0.12) 0%, transparent 60%),
+    radial-gradient(ellipse 80% 60% at 50% 0%, rgba(32, 214, 255, 0.12) 0%, transparent 60%),
     radial-gradient(ellipse 60% 50% at 80% 50%, rgba(0, 212, 170, 0.06) 0%, transparent 50%),
     var(--bg-deep);
 }
@@ -272,7 +278,7 @@ h1, h2, h3, h4, h5, h6 {
   font-size: clamp(36px, 5vw, 56px);
   font-weight: 800;
   line-height: 1.12;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
   color: var(--text-primary);
   max-width: 800px;
   margin: 0 auto 16px;
@@ -413,20 +419,21 @@ h1, h2, h3, h4, h5, h6 {
   animation: btn-pulse 2s infinite;
 }
 @keyframes btn-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(108, 71, 255, 0.4); }
-  50% { box-shadow: 0 0 0 12px rgba(108, 71, 255, 0); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(32, 214, 255, 0.34); }
+  50% { box-shadow: 0 0 0 12px rgba(32, 214, 255, 0); }
 }
 
 /* ============================================================
    7. 卡片
    ============================================================ */
 .card-dark {
-  background: linear-gradient(135deg, #12122A 0%, #151530 100%);
+  background: linear-gradient(135deg, rgba(13, 21, 29, 0.94) 0%, rgba(16, 30, 40, 0.9) 100%);
   border: 1px solid var(--border-card);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
   transition: all var(--ease-base);
   overflow: hidden;
+  backdrop-filter: blur(14px);
 }
 .card-dark:hover {
   transform: translateY(-4px);
@@ -496,7 +503,7 @@ h1, h2, h3, h4, h5, h6 {
   margin: 0 auto 16px;
   font-size: 24px;
 }
-.feature-card .feature-icon.purple { background: rgba(108, 71, 255, 0.15); color: var(--brand); }
+.feature-card .feature-icon.purple { background: rgba(32, 214, 255, 0.15); color: var(--brand); }
 .feature-card .feature-icon.teal { background: rgba(0, 212, 170, 0.15); color: var(--brand-teal); }
 .feature-card .feature-icon.amber { background: rgba(255, 181, 71, 0.15); color: var(--warning); }
 .feature-card .feature-icon.rose { background: rgba(255, 69, 96, 0.15); color: var(--danger); }
@@ -586,11 +593,11 @@ h1, h2, h3, h4, h5, h6 {
   text-align: center;
   cursor: pointer;
   transition: all var(--ease-base);
-  background: rgba(108, 71, 255, 0.02);
+  background: rgba(32, 214, 255, 0.04);
 }
 .drop-zone:hover {
   border-color: var(--brand);
-  background: rgba(108, 71, 255, 0.05);
+  background: rgba(32, 214, 255, 0.07);
 }
 .drop-zone.drag-over {
   border-color: var(--brand-teal);
@@ -772,10 +779,10 @@ h1, h2, h3, h4, h5, h6 {
 .table-dark-custom td {
   padding: 10px 16px;
   color: var(--text-secondary);
-  border-bottom: 1px solid rgba(108, 71, 255, 0.05);
+  border-bottom: 1px solid rgba(32, 214, 255, 0.08);
 }
 .table-dark-custom tr:hover td {
-  background: rgba(108, 71, 255, 0.04);
+  background: rgba(32, 214, 255, 0.06);
 }
 
 /* 严重级别颜色条 */
@@ -960,12 +967,19 @@ h1, h2, h3, h4, h5, h6 {
   gap: 18px;
   align-items: start;
 }
+.camera-layout > * {
+  min-width: 0;
+  max-width: 100%;
+}
 .camera-stage-card,
 .status-card {
+  min-width: 0;
+  max-width: 100%;
   border: 1px solid var(--border-card);
   border-radius: var(--radius-lg);
-  background: var(--bg-card);
+  background: linear-gradient(135deg, rgba(13, 21, 29, 0.95) 0%, rgba(7, 14, 22, 0.92) 100%);
   box-shadow: var(--shadow-md);
+  backdrop-filter: blur(14px);
 }
 .camera-stage-card {
   padding: 16px;
@@ -1099,6 +1113,27 @@ h1, h2, h3, h4, h5, h6 {
 .camera-side-panel {
   display: grid;
   gap: 14px;
+}
+.classifier-card {
+  border-color: rgba(32, 214, 255, 0.28);
+  box-shadow: 0 0 28px rgba(32, 214, 255, 0.08);
+}
+.confidence-rail {
+  width: 100%;
+  height: 8px;
+  margin: 12px 0 10px;
+  border-radius: 999px;
+  background: rgba(145, 169, 184, 0.12);
+  overflow: hidden;
+}
+.confidence-rail span {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--brand), var(--success));
+  box-shadow: 0 0 16px rgba(32, 214, 255, 0.45);
+  transition: width var(--ease-base);
 }
 .status-card {
   overflow: hidden;
@@ -1315,6 +1350,19 @@ h1, h2, h3, h4, h5, h6 {
   text-align: center;
   font-size: 13px;
   color: var(--text-muted);
+}
+@media (max-width: 768px) {
+  .footer-glass {
+    margin-top: 48px;
+    padding: 36px 18px 22px;
+  }
+  .footer-glass > div:first-child {
+    grid-template-columns: 1fr !important;
+    gap: 22px !important;
+  }
+  .footer-glass .footer-desc {
+    max-width: none;
+  }
 }
 
 /* ============================================================

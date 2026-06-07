@@ -57,14 +57,12 @@ def list_models():
     from config import (
         YOLO_HANDHELD_MODEL,
         YOLO_DRIVER_STATE_MODEL,
+        YOLO_DRIVER_CLASSIFIER_MODEL,
         YOLO_STEERING_HAND_MODEL,
         YOLO_POSE_MODEL,
         BP_LSTM_MODEL,
     )
 
-    drowsiness_cls_model = os.path.join(
-        os.path.dirname(YOLO_HANDHELD_MODEL), 'yolo_drowsiness_cls.pt'
-    )
     models = {
         'face_detector': {
             'description': 'face_recognition/dlib 68点 + MediaPipe/Yunet fallback',
@@ -85,6 +83,11 @@ def list_models():
             'path': YOLO_STEERING_HAND_MODEL,
             'available': os.path.exists(YOLO_STEERING_HAND_MODEL),
         },
+        'driver_distraction_cls': {
+            'description': 'YOLOv8 真实数据集整帧驾驶分心分类模型',
+            'path': YOLO_DRIVER_CLASSIFIER_MODEL,
+            'available': os.path.exists(YOLO_DRIVER_CLASSIFIER_MODEL),
+        },
         'yolo_pose': {
             'description': 'YOLOv8n-pose 人体姿态估计模型',
             'path': YOLO_POSE_MODEL,
@@ -92,8 +95,8 @@ def list_models():
         },
         'yolo_drowsiness_cls': {
             'description': 'YOLOv8 真实数据集驾驶疲劳二分类模型',
-            'path': drowsiness_cls_model,
-            'available': os.path.exists(drowsiness_cls_model),
+            'path': os.path.join(os.path.dirname(YOLO_HANDHELD_MODEL), 'yolo_drowsiness_cls.pt'),
+            'available': os.path.exists(os.path.join(os.path.dirname(YOLO_HANDHELD_MODEL), 'yolo_drowsiness_cls.pt')),
         },
         'bp_lstm': {
             'description': 'PPG血压趋势预测 LSTM 模型',

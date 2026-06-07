@@ -458,9 +458,32 @@ class YoloDatasetScriptTests(unittest.TestCase):
         script = Path("yolo/train_real_datasets.py").read_text(encoding="utf-8")
 
         self.assertIn("Driver fatigue and distraction", script)
+        self.assertIn("Novel Driver Distractions Dataset With Low Lighting Support", script)
         self.assertIn("n7i5x9/driver-drowsiness-dataset", script)
         self.assertIn("--dry-run", script)
         self.assertIn("yolo_driver_state.pt", script)
+        self.assertIn("driver_distraction_cls.pt", script)
+
+    def test_mendeley_dataset_prepare_and_classifier_scripts_exist(self):
+        prepare = Path("yolo/mendeley_distraction_dataset.py").read_text(encoding="utf-8")
+        train = Path("yolo/train_mendeley_distraction_cls.py").read_text(encoding="utf-8")
+
+        self.assertIn("ykmr99nrsg", prepare)
+        self.assertIn("CC BY-NC 3.0", prepare)
+        self.assertIn("safe_driving", prepare)
+        self.assertIn("talking_to_passenger", prepare)
+        self.assertIn("YOLO_DRIVER_CLASSIFIER_MODEL", train)
+
+    def test_camera_and_result_pages_surface_driver_classifier(self):
+        camera_html = Path("templates/camera.html").read_text(encoding="utf-8")
+        camera_js = Path("static/js/camera.js").read_text(encoding="utf-8")
+        result_html = Path("templates/result.html").read_text(encoding="utf-8")
+        result_js = Path("static/js/result.js").read_text(encoding="utf-8")
+
+        self.assertIn("metric-driver-class", camera_html)
+        self.assertIn("updateDriverClassifierPanel", camera_js)
+        self.assertIn("r-driver-class", result_html)
+        self.assertIn("renderDriverState", result_js)
 
 
 class YoloModelCacheTests(unittest.TestCase):
@@ -481,9 +504,10 @@ class YoloModelCacheTests(unittest.TestCase):
 
         self.assertIs(first.handheld_model, second.handheld_model)
         self.assertIs(first.driver_state_model, second.driver_state_model)
+        self.assertIs(first.driver_classifier_model, second.driver_classifier_model)
         self.assertIs(first.steering_hand_model, second.steering_hand_model)
         self.assertIs(first.pose_model, second.pose_model)
-        self.assertEqual(FakeYOLO.load_count, 4)
+        self.assertEqual(FakeYOLO.load_count, 5)
 
     def test_single_and_double_hand_off_have_separate_alert_levels(self):
         import detectors.distraction as distraction_module

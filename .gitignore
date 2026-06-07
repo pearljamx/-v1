@@ -16,6 +16,7 @@ uploads/
 outputs/
 runs/
 datasets/
+dataset/roboflow_driver_state/
 *.log
 
 # Model and database artifacts

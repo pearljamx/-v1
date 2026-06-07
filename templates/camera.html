@@ -210,6 +210,23 @@
                 </div>
             </div>
 
+            <div class="status-card classifier-card">
+                <div class="card-header">
+                    <h5><i class="bi bi-cpu"></i> 真实数据分类</h5>
+                </div>
+                <div class="card-body">
+                    <div class="realtime-metric wide">
+                        <div class="metric-label">整帧驾驶行为</div>
+                        <div id="metric-driver-class" class="metric-value">--</div>
+                        <div id="metric-driver-class-source" class="metric-hint">等待 Mendeley 分类模型输出</div>
+                    </div>
+                    <div class="confidence-rail" aria-label="分类置信度">
+                        <span id="metric-driver-confidence-bar"></span>
+                    </div>
+                    <div class="metric-hint">该结果来自真实图片数据集训练的 YOLO classification 模型。</div>
+                </div>
+            </div>
+
             <div class="status-card">
                 <div class="card-header">
                     <h5><i class="bi bi-brightness-high"></i> 环境光照</h5>

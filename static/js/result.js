@@ -37,6 +37,7 @@ function renderResults(data) {
     // 3. 分心检测详情
     if (data.head_pose || data.distraction) {
         renderDistractionDetails(data);
+        renderDriverState(data.distraction || {});
     }
 
     // 4. 生理信号
@@ -163,6 +164,27 @@ function renderDistractionDetails(data) {
         } else {
             objects.textContent = '未检测到异常物体';
         }
+    }
+}
+
+function renderDriverState(distraction) {
+    const classEl = document.getElementById('r-driver-class');
+    const confEl = document.getElementById('r-driver-confidence');
+    const state = distraction.driver_state || {};
+    const labelMap = {
+        normal: '正常驾驶',
+        phone: '手机分心',
+        drinking: '饮水/进食',
+        turning: '转身/交谈',
+        drowsy: '疲劳状态',
+        secondary_task: '分心操作',
+    };
+    if (classEl) {
+        const name = state.class_name || state.class;
+        classEl.textContent = name ? (labelMap[name] || name) : '未输出';
+    }
+    if (confEl) {
+        confEl.textContent = state.confidence !== undefined ? (state.confidence * 100).toFixed(1) + '%' : '--';
     }
 }
 

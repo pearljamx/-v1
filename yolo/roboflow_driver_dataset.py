@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import os
 import shutil
+import tempfile
 import zipfile
 from pathlib import Path
 
@@ -53,8 +54,23 @@ def download_from_roboflow(output_dir: Path, version: int) -> Path:
     clean_dir(output_dir)
     rf = Roboflow(api_key=api_key)
     project = rf.workspace(ROBOFLOW_WORKSPACE).project(ROBOFLOW_PROJECT)
-    dataset = project.version(version).download("yolov8", location=str(output_dir))
-    return Path(dataset.location)
+    # Roboflow SDK may mis-encode non-ASCII Windows paths. Download into an
+    # ASCII-only temp directory first, then move the extracted files back.
+    with tempfile.TemporaryDirectory(prefix="roboflow_driver_state_") as tmp:
+        tmp_dir = Path(tmp)
+        dataset = project.version(version).download("yolov8", location=str(tmp_dir), overwrite=True)
+        downloaded = Path(dataset.location)
+        if not downloaded.exists():
+            downloaded = tmp_dir
+        for item in downloaded.iterdir():
+            target = output_dir / item.name
+            if target.exists():
+                if target.is_dir():
+                    shutil.rmtree(target)
+                else:
+                    target.unlink()
+            shutil.move(str(item), str(target))
+    return output_dir
 
 
 def import_zip(zip_path: Path, output_dir: Path) -> Path:
@@ -77,10 +93,10 @@ def normalize_data_yaml(dataset_dir: Path) -> Path:
     data_yaml = find_data_yaml(dataset_dir)
     data = yaml.safe_load(data_yaml.read_text(encoding="utf-8")) or {}
     root = data_yaml.parent
-    data["path"] = str(root).replace("\\", "/")
-    data.setdefault("train", "train/images")
-    data.setdefault("val", "valid/images" if (root / "valid").exists() else "val/images")
-    data.setdefault("test", "test/images")
+    data["path"] = str(root.resolve()).replace("\\", "/")
+    data["train"] = "train/images"
+    data["val"] = "valid/images" if (root / "valid").exists() else "val/images"
+    data["test"] = "test/images"
     data["driver_state_mapping"] = CLASS_MAPPING
     data["target_model"] = TARGET_MODEL_NAME
     data_yaml.write_text(yaml.safe_dump(data, allow_unicode=True, sort_keys=False), encoding="utf-8")
