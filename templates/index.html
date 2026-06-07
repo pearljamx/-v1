@@ -81,49 +81,6 @@
   .stat-value.score-green { color: var(--success); }
   .stat-value.score-yellow { color: var(--warning); }
   .stat-value.score-red { color: var(--danger); }
-
-  /* 首页首屏以检测工作台为主，减少宣传区占位 */
-  #features { display: none; }
-  .hero-section {
-    text-align: left;
-    padding: 28px 28px 24px;
-    margin-bottom: 10px;
-    border: 1px solid var(--border-card);
-    border-radius: 8px;
-    background:
-      linear-gradient(135deg, rgba(32, 214, 255, 0.12), rgba(0, 212, 170, 0.05)),
-      rgba(5, 8, 13, 0.68);
-  }
-  .hero-section .hero-title,
-  .hero-section .hero-subtitle {
-    margin-left: 0;
-    margin-right: 0;
-    max-width: 760px;
-  }
-  .hero-section .hero-title {
-    font-size: clamp(28px, 4vw, 44px);
-  }
-  .hero-section .hero-subtitle {
-    margin-bottom: 18px;
-  }
-  .hero-actions {
-    justify-content: flex-start;
-  }
-  .hero-rotating-text {
-    margin-top: 18px;
-  }
-  #upload-section {
-    padding-top: 18px;
-  }
-  @media (max-width: 640px) {
-    .hero-section {
-      padding: 22px 18px;
-    }
-    .hero-actions .btn {
-      width: 100%;
-      justify-content: center;
-    }
-  }
 </style>
 {% endblock %}
 
@@ -140,7 +97,7 @@
   </div>
 
   <!-- ============================================================
-       1. Command Deck
+       1. Hero Section
        ============================================================ -->
   <section class="hero-section reveal">
     <div class="hero-blob hero-blob-1"></div>
@@ -148,20 +105,21 @@
 
     <div class="hero-badge">
       <span class="dot"></span>
-      LIVE SAFETY WORKBENCH
+      AI-Powered 实时监测
     </div>
 
     <h1 class="hero-title">
-      驾驶注意力<span class="text-gradient">检测工作台</span>
+      驾驶<span class="text-gradient">注意力</span>智能检测平台
     </h1>
 
     <p class="hero-subtitle">
-      上传图片/视频或开启摄像头，直接查看疲劳、分心、转头、手部离把与真实数据分类结果。
+      基于深度学习与计算机视觉技术，实时分析驾驶员状态，
+      精准识别疲劳、分心及生理异常，为安全驾驶保驾护航。
     </p>
 
     <div class="hero-actions">
       <a href="#upload-section" class="btn btn-primary btn-lg">
-        <i class="bi bi-upload"></i> 上传检测
+        <i class="bi bi-play-circle-fill"></i> 开始检测
       </a>
       <a href="/camera" class="btn btn-outline btn-lg">
         <i class="bi bi-camera-video-fill"></i> 实时摄像头
@@ -169,7 +127,7 @@
     </div>
 
     <div class="hero-rotating-text" id="hero-rotating">
-      <span class="highlight rotating-phrase">真实数据模型链路已接入：Roboflow YOLO 检测 + Mendeley 整帧分类</span>
+      <span class="highlight rotating-phrase">正在检测面部关键点...</span>
     </div>
   </section>
 

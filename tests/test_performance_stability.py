@@ -474,16 +474,17 @@ class YoloDatasetScriptTests(unittest.TestCase):
         self.assertIn("talking_to_passenger", prepare)
         self.assertIn("YOLO_DRIVER_CLASSIFIER_MODEL", train)
 
-    def test_camera_and_result_pages_surface_driver_classifier(self):
-        camera_html = Path("templates/camera.html").read_text(encoding="utf-8")
+    def test_camera_start_makes_preview_video_visible(self):
         camera_js = Path("static/js/camera.js").read_text(encoding="utf-8")
-        result_html = Path("templates/result.html").read_text(encoding="utf-8")
-        result_js = Path("static/js/result.js").read_text(encoding="utf-8")
 
-        self.assertIn("metric-driver-class", camera_html)
-        self.assertIn("updateDriverClassifierPanel", camera_js)
-        self.assertIn("r-driver-class", result_html)
-        self.assertIn("renderDriverState", result_js)
+        self.assertIn("dom.video.style.display = 'block'", camera_js)
+        self.assertIn("dom.overlayCanvas.style.display = 'block'", camera_js)
+
+    def test_models_api_surfaces_driver_classifier(self):
+        route = Path("web/routes_main.py").read_text(encoding="utf-8")
+
+        self.assertIn("driver_distraction_cls", route)
+        self.assertIn("YOLO_DRIVER_CLASSIFIER_MODEL", route)
 
 
 class YoloModelCacheTests(unittest.TestCase):
