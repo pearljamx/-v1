@@ -65,6 +65,7 @@
     </div>
 
     <div class="camera-layout">
+        <div class="camera-main-column">
         <section class="camera-stage-card">
             <div class="camera-stage-header">
                 <div>
@@ -108,7 +109,7 @@
             </div>
         </section>
 
-        <aside class="camera-side-panel">
+        <section class="camera-insight-grid" aria-label="实时指标概览">
             <div class="status-card primary-status">
                 <div class="card-header">
                     <h5><i class="bi bi-person-bounding-box"></i> 人脸检测</h5>
@@ -142,6 +143,45 @@
                 </div>
             </div>
 
+            <div class="status-card">
+                <div class="card-header">
+                    <h5><i class="bi bi-crosshair"></i> 视线方向</h5>
+                </div>
+                <div class="card-body centered-card">
+                    <div id="metric-gaze-angle" class="metric-value large">--</div>
+                    <span class="metric-hint">偏离角度 (阈值 &gt;30°)</span>
+                </div>
+            </div>
+
+            <div class="status-card">
+                <div class="card-header">
+                    <h5><i class="bi bi-brightness-high"></i> 环境光照</h5>
+                </div>
+                <div class="card-body centered-card">
+                    <div id="metric-lighting-level" class="metric-value">--</div>
+                    <div class="metric-hint">
+                        亮度: <span id="metric-brightness-value" style="color:var(--text-primary);">--</span>
+                    </div>
+                    <div class="metric-hint">
+                        EAR阈值: <span id="metric-adaptive-ear" style="color:var(--text-primary);">--</span> |
+                        MAR阈值: <span id="metric-adaptive-mar" style="color:var(--text-primary);">--</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="status-card">
+                <div class="card-header">
+                    <h5><i class="bi bi-heart-pulse"></i> 生理状态</h5>
+                </div>
+                <div class="card-body centered-card">
+                    <div class="metric-value">rPPG</div>
+                    <span class="metric-hint">开启后约 10 秒输出心率/血压趋势</span>
+                </div>
+            </div>
+        </section>
+        </div>
+
+        <aside class="camera-side-panel">
             <div class="status-card">
                 <div class="card-header">
                     <h5><i class="bi bi-arrow-left-right"></i> 转头/转身</h5>
@@ -197,42 +237,6 @@
                         <span id="metric-hand-right" class="status-pill">右手等待</span>
                         <span class="status-pill muted">持续 <b id="metric-hand-duration">0.0s</b></span>
                     </div>
-                </div>
-            </div>
-
-            <div class="status-card">
-                <div class="card-header">
-                    <h5><i class="bi bi-crosshair"></i> 视线方向</h5>
-                </div>
-                <div class="card-body centered-card">
-                    <div id="metric-gaze-angle" class="metric-value large">--</div>
-                    <span class="metric-hint">偏离角度 (阈值 &gt;30°)</span>
-                </div>
-            </div>
-
-            <div class="status-card">
-                <div class="card-header">
-                    <h5><i class="bi bi-brightness-high"></i> 环境光照</h5>
-                </div>
-                <div class="card-body centered-card">
-                    <div id="metric-lighting-level" class="metric-value">--</div>
-                    <div class="metric-hint">
-                        亮度: <span id="metric-brightness-value" style="color:var(--text-primary);">--</span>
-                    </div>
-                    <div class="metric-hint">
-                        EAR阈值: <span id="metric-adaptive-ear" style="color:var(--text-primary);">--</span> |
-                        MAR阈值: <span id="metric-adaptive-mar" style="color:var(--text-primary);">--</span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="status-card">
-                <div class="card-header">
-                    <h5><i class="bi bi-heart-pulse"></i> 生理状态</h5>
-                </div>
-                <div class="card-body centered-card">
-                    <div class="metric-value">rPPG</div>
-                    <span class="metric-hint">开启后约 10 秒输出心率/血压趋势</span>
                 </div>
             </div>
 
